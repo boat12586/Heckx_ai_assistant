@@ -9,24 +9,135 @@ import sqlite3
 from datetime import datetime
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
-from music_discovery import MusicDiscoveryService
-from google_drive_service import get_drive_service
+import requests
+from pathlib import Path
+from typing import List, Dict, Optional
 
 app = Flask(__name__)
 CORS(app)
 
+# Embedded Music Discovery Service
+class SimpleMusicService:
+    def __init__(self):
+        self.pixabay_api_key = '46734-67b3b2251fecba4ff4d66ee95'  # Demo key
+        self.init_music_db()
+        
+    def init_music_db(self):
+        """Initialize music database with demo data"""
+        conn = sqlite3.connect('music_library.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS music_tracks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source TEXT,
+                external_id TEXT,
+                title TEXT,
+                artist TEXT,
+                tags TEXT,
+                download_url TEXT,
+                preview_url TEXT,
+                duration INTEGER,
+                downloads INTEGER,
+                likes INTEGER,
+                genre TEXT,
+                mood TEXT
+            )
+        ''')
+        
+        # Add demo tracks if database is empty
+        cursor.execute('SELECT COUNT(*) FROM music_tracks')
+        if cursor.fetchone()[0] == 0:
+            demo_music = [
+                ('demo', 'demo_jazz_1', 'Smooth Jazz Café', 'Jazz Ensemble', 'jazz, smooth, café, relaxing', 
+                 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3', 
+                 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3',
+                 180, 5000, 250, 'jazz', 'relaxing'),
+                
+                ('demo', 'demo_lofi_1', 'Lo-fi Study Session', 'Chill Beats', 'lofi, study, chill, beats, focus',
+                 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_2165f1a07c.mp3',
+                 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_2165f1a07c.mp3',
+                 165, 7200, 420, 'lofi', 'focus'),
+                
+                ('demo', 'demo_blue_1', 'Midnight Blues', 'Blue Soul', 'blues, midnight, soulful, emotional',
+                 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',
+                 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',
+                 210, 3500, 180, 'blues', 'melancholic'),
+                
+                ('demo', 'demo_piano_1', 'Solo Piano Dreams', 'Piano Virtuoso', 'piano, solo, dreams, classical',
+                 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_2165f1a07c.mp3',
+                 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_2165f1a07c.mp3',
+                 240, 6800, 340, 'classical', 'peaceful')
+            ]
+            
+            cursor.executemany('''
+                INSERT INTO music_tracks 
+                (source, external_id, title, artist, tags, download_url, preview_url, 
+                 duration, downloads, likes, genre, mood)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', demo_music)
+            
+            print("✅ Added demo music tracks to database")
+        
+        conn.commit()
+        conn.close()
+    
+    def search_music(self, query: str) -> List[Dict]:
+        """Search demo music tracks"""
+        conn = sqlite3.connect('music_library.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT * FROM music_tracks 
+            WHERE (title LIKE ? OR artist LIKE ? OR tags LIKE ?)
+            ORDER BY downloads DESC
+        ''', [f'%{query}%', f'%{query}%', f'%{query}%'])
+        
+        tracks = []
+        for row in cursor.fetchall():
+            tracks.append({
+                'id': row[0],
+                'title': row[3],
+                'artist': row[4],
+                'tags': row[5],
+                'preview_url': row[7],
+                'duration': row[8],
+                'downloads': row[9],
+                'likes': row[10],
+                'genre': row[11],
+                'mood': row[12]
+            })
+        
+        conn.close()
+        return tracks
+    
+    def get_library_stats(self) -> Dict:
+        """Get music library statistics"""
+        conn = sqlite3.connect('music_library.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT COUNT(*) FROM music_tracks')
+        total_tracks = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT genre, COUNT(*) FROM music_tracks GROUP BY genre')
+        genres = cursor.fetchall()
+        
+        conn.close()
+        
+        return {
+            'total_tracks': total_tracks,
+            'genres': genres
+        }
+
 # Initialize services
 try:
-    # Force recreate music database with demo data
-    import os
     if os.path.exists('music_library.db'):
         os.remove('music_library.db')
         print("🔄 Recreating music database with demo data...")
 except:
     pass
 
-music_service = MusicDiscoveryService()
-drive_service = get_drive_service()
+music_service = SimpleMusicService()
 
 # Enhanced quotes by category
 QUOTES_BY_CATEGORY = {
@@ -1051,13 +1162,8 @@ def rate_quote():
 def discover_music():
     """Discover premium quality music"""
     try:
-        query = request.args.get('query', '')
-        min_downloads = int(request.args.get('min_downloads', 2000))
-        
-        if query:
-            tracks = music_service.search_pixabay_music(query, min_downloads)
-        else:
-            tracks = music_service.discover_premium_music()
+        query = request.args.get('query', 'lofi')
+        tracks = music_service.search_music(query)
         
         return jsonify({
             'success': True,
@@ -1077,20 +1183,13 @@ def download_music():
         if not track_info:
             return jsonify({'error': 'Track information required'}), 400
         
-        file_path = music_service.download_track(track_info)
-        
-        if file_path:
-            # Upload to Google Drive
-            drive_id = drive_service.upload_music_file(file_path, track_info)
-            
-            return jsonify({
-                'success': True,
-                'file_path': file_path,
-                'google_drive_id': drive_id,
-                'message': 'Track downloaded and uploaded to Google Drive'
-            })
-        else:
-            return jsonify({'error': 'Download failed'}), 500
+        # Demo mode - simulate download
+        return jsonify({
+            'success': True,
+            'demo': True,
+            'message': 'Demo mode - Track would be downloaded and uploaded to Google Drive',
+            'track': track_info.get('title', 'Unknown Track')
+        })
             
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1100,15 +1199,7 @@ def get_music_library():
     """Get music library with search and filters"""
     try:
         query = request.args.get('query', '')
-        genre = request.args.get('genre')
-        mood = request.args.get('mood')
-        
-        if query or genre or mood:
-            tracks = music_service.search_library(query, genre, mood)
-        else:
-            # Get all tracks
-            tracks = music_service.search_library('', None, None)
-        
+        tracks = music_service.search_music(query) if query else music_service.search_music('')
         stats = music_service.get_library_stats()
         
         return jsonify({
@@ -1124,7 +1215,7 @@ def get_music_library():
 def get_music_recommendations():
     """Get premium music recommendations"""
     try:
-        recommendations = music_service.get_premium_recommendations()
+        recommendations = music_service.search_music('lofi')  # Get lofi tracks as recommendations
         
         return jsonify({
             'success': True,
@@ -1189,12 +1280,14 @@ def manage_playlists():
             if not name:
                 return jsonify({'error': 'Playlist name required'}), 400
             
-            playlist_id = music_service.create_playlist(name, track_ids, mood_tag)
+            # Demo mode - simulate playlist creation
+            playlist_id = len(name)  # Simple ID generation
             
             return jsonify({
                 'success': True,
                 'playlist_id': playlist_id,
-                'message': f'Playlist "{name}" created'
+                'demo': True,
+                'message': f'Demo playlist "{name}" created with {len(track_ids)} tracks'
             })
         
         else:  # GET
@@ -1229,10 +1322,9 @@ def manage_playlists():
 def get_drive_info():
     """Get Google Drive library information"""
     try:
-        info = drive_service.get_drive_library_info()
         return jsonify({
             'success': True,
-            'drive_info': info
+            'drive_info': {'demo_mode': True, 'message': 'Google Drive integration available in full version'}
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1241,10 +1333,10 @@ def get_drive_info():
 def sync_to_drive():
     """Sync entire library to Google Drive"""
     try:
-        drive_service.bulk_upload_library()
         return jsonify({
             'success': True,
-            'message': 'Library sync to Google Drive initiated'
+            'message': 'Demo mode - Library sync would be initiated',
+            'demo': True
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1261,23 +1353,20 @@ def bulk_discover_music():
         all_tracks = []
         
         for keyword in keywords:
-            tracks = music_service.search_pixabay_music(keyword, min_downloads=2000, per_page=5)
+            tracks = music_service.search_music(keyword)
             all_tracks.extend(tracks)
         
-        # Sort by quality and limit
-        sorted_tracks = sorted(all_tracks, key=lambda x: x['quality_score'], reverse=True)
+        # Sort by downloads and limit
+        sorted_tracks = sorted(all_tracks, key=lambda x: x.get('downloads', 0), reverse=True)
         top_tracks = sorted_tracks[:max_tracks]
         
         downloaded_tracks = []
         
         if auto_download:
-            for track in top_tracks:
-                file_path = music_service.download_track(track)
-                if file_path:
-                    drive_id = drive_service.upload_music_file(file_path, track)
-                    track['file_path'] = file_path
-                    track['google_drive_id'] = drive_id
-                    downloaded_tracks.append(track)
+            # Demo mode - simulate download
+            downloaded_tracks = top_tracks.copy()
+            for track in downloaded_tracks:
+                track['demo_downloaded'] = True
         
         return jsonify({
             'success': True,
