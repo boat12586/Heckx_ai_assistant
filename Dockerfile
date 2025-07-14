@@ -15,8 +15,8 @@ RUN adduser -D -s /bin/sh appuser
 RUN chown -R appuser:appuser /app
 USER appuser
 
-# Expose port
-EXPOSE $PORT
+# Expose port (Railway will set PORT env var)
+EXPOSE 8000
 
-# Start with gunicorn for production
-CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120 --keep-alive 5 --max-requests 1000 --access-logfile - --error-logfile -"]
+# Start with gunicorn for production - let Railway handle PORT
+CMD gunicorn app:app --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120 --keep-alive 5 --max-requests 1000 --access-logfile - --error-logfile -
