@@ -75,8 +75,98 @@ class StoicQuotesGenerator:
             "timestamp": datetime.now().isoformat()
         }
 
+class VideoFootageManager:
+    def __init__(self):
+        # Real API keys
+        self.pixabay_key = "51171247-ed811b64146f17a9491cc525f"
+        self.pexels_key = "1Vtcwi0g2To9iSY7FJubIw8qW5DoiislcRvoN6hBZJlO3JdyMC1sdl3s"
+        
+        # Stock video categories
+        self.video_categories = {
+            "resilience": ["mountain", "storm", "waves", "strong", "powerful"],
+            "peace": ["sunset", "calm", "meditation", "zen", "nature"],
+            "growth": ["forest", "plant", "sunrise", "growth", "tree"],
+            "success": ["sky", "achievement", "victory", "celebration"],
+            "motivation": ["running", "fitness", "energy", "action"]
+        }
+
+    def search_pixabay_videos(self, theme):
+        """Search Pixabay for videos by theme"""
+        try:
+            keywords = self.video_categories.get(theme, ["nature"])
+            query = keywords[0]  # Use first keyword
+            
+            url = f"https://pixabay.com/api/videos/"
+            params = {
+                'key': self.pixabay_key,
+                'q': query,
+                'video_type': 'film',
+                'category': 'nature',
+                'min_duration': 10,
+                'per_page': 5,
+                'safesearch': 'true'
+            }
+            
+            response = requests.get(url, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                videos = []
+                for item in data.get('hits', []):
+                    videos.append({
+                        'id': item['id'],
+                        'url': item['videos']['medium']['url'],
+                        'preview': item['videos']['small']['url'],
+                        'duration': item['duration'],
+                        'tags': item['tags'],
+                        'source': 'pixabay'
+                    })
+                return {"success": True, "videos": videos, "count": len(videos)}
+            else:
+                return {"success": False, "error": f"API error: {response.status_code}"}
+                
+        except Exception as e:
+            return {"success": False, "error": f"Search failed: {str(e)}"}
+
+    def search_pexels_videos(self, theme):
+        """Search Pexels for videos by theme"""
+        try:
+            keywords = self.video_categories.get(theme, ["nature"])
+            query = keywords[0]
+            
+            url = f"https://api.pexels.com/videos/search"
+            headers = {"Authorization": self.pexels_key}
+            params = {
+                'query': query,
+                'per_page': 5,
+                'size': 'medium'
+            }
+            
+            response = requests.get(url, headers=headers, params=params, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                videos = []
+                for item in data.get('videos', []):
+                    video_files = item.get('video_files', [])
+                    if video_files:
+                        videos.append({
+                            'id': item['id'],
+                            'url': video_files[0]['link'],
+                            'preview': item.get('image'),
+                            'duration': item.get('duration', 15),
+                            'source': 'pexels'
+                        })
+                return {"success": True, "videos": videos, "count": len(videos)}
+            else:
+                return {"success": False, "error": f"API error: {response.status_code}"}
+                
+        except Exception as e:
+            return {"success": False, "error": f"Search failed: {str(e)}"}
+
 class ContainerIntegration:
     def __init__(self):
+        self.video_manager = VideoFootageManager()
         self.services = {
             "kokoro_tts": {
                 "name": "Kokoro GPU TTS",
@@ -332,6 +422,7 @@ def home():
                     <div class="demo-panel">
                         <h3>🎬 Video Generator</h3>
                         <button onclick="generateQuote()" style="width: 100%; margin-bottom: 10px;">🎯 Generate Daily Quote</button>
+                        <button onclick="searchVideos()" style="width: 100%; margin-bottom: 10px;">🎬 Search Real Videos</button>
                         <button onclick="createVideo()" style="width: 100%; margin-bottom: 10px;">🚀 Create Motivational Video</button>
                         <button onclick="checkContainers()" style="width: 100%;">📊 Check System Status</button>
                         <div id="video-status" style="margin-top: 15px; font-family: monospace; font-size: 0.9em;"></div>
@@ -375,6 +466,26 @@ def home():
                         `📝 <strong>Quote:</strong> ${data.quote}<br>` +
                         `👤 <strong>Author:</strong> ${data.author}<br>` +
                         `🎨 <strong>Theme:</strong> ${data.theme}`;
+                });
+            }
+            
+            function searchVideos() {
+                document.getElementById('video-status').innerHTML = '🔍 Searching real videos...';
+                
+                const themes = ['resilience', 'peace', 'growth', 'success'];
+                const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+                
+                fetch(`/api/videos/search/${randomTheme}`)
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('video-status').innerHTML = 
+                        `🎬 <strong>Found:</strong> ${data.total_videos} videos<br>` +
+                        `🎯 <strong>Theme:</strong> ${data.theme}<br>` +
+                        `📊 <strong>Sources:</strong> Pixabay: ${data.sources.pixabay ? '✅' : '❌'}, Pexels: ${data.sources.pexels ? '✅' : '❌'}<br>` +
+                        `🎥 <strong>Sample:</strong> ${data.videos.length > 0 ? data.videos[0].source + ' video ready!' : 'No videos'}`;
+                })
+                .catch(e => {
+                    document.getElementById('video-status').innerHTML = '❌ Video search failed';
                 });
             }
             
@@ -498,6 +609,55 @@ def synthesize_speech():
 def daily_quote():
     quote = quotes_generator.get_daily_quote()
     return jsonify(quotes_generator.export_for_api(quote))
+
+@app.route('/api/videos/search/<theme>')
+def search_videos(theme):
+    """Search for videos by theme using real APIs"""
+    footage_manager = VideoFootageManager()
+    
+    # Try both APIs
+    pixabay_result = footage_manager.search_pixabay_videos(theme)
+    pexels_result = footage_manager.search_pexels_videos(theme)
+    
+    all_videos = []
+    if pixabay_result["success"]:
+        all_videos.extend(pixabay_result["videos"])
+    if pexels_result["success"]:
+        all_videos.extend(pexels_result["videos"])
+    
+    return jsonify({
+        "theme": theme,
+        "total_videos": len(all_videos),
+        "videos": all_videos[:10],  # Return top 10
+        "sources": {
+            "pixabay": pixabay_result["success"],
+            "pexels": pexels_result["success"]
+        }
+    })
+
+@app.route('/api/videos/random/<theme>')
+def random_video(theme):
+    """Get a random video for theme"""
+    footage_manager = VideoFootageManager()
+    
+    # Try Pixabay first, fallback to Pexels
+    result = footage_manager.search_pixabay_videos(theme)
+    if not result["success"]:
+        result = footage_manager.search_pexels_videos(theme)
+    
+    if result["success"] and result["videos"]:
+        video = random.choice(result["videos"])
+        return jsonify({
+            "success": True,
+            "video": video,
+            "theme": theme
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "error": "No videos found",
+            "theme": theme
+        })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
