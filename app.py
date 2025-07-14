@@ -433,26 +433,458 @@ init_db()
 
 @app.route('/')
 def home():
-    # Return the simplified Thai UI
-    try:
-        with open('ui_simple.html', 'r', encoding='utf-8') as f:
-            return f.read()
-    except Exception as e:
-        # Fallback to simple HTML if file not found
-        return f'''
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>🎵 Heckx เพลงออนไลน์</title>
-            <meta charset="UTF-8">
-        </head>
-        <body style="font-family: Arial; padding: 20px; background: #667eea; color: white;">
+    # Embedded simplified Thai UI
+    return '''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>🎵 Heckx เพลงออนไลน์</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white; 
+                min-height: 100vh;
+                padding: 20px;
+            }
+            .container { 
+                max-width: 1000px; 
+                margin: 0 auto;
+                background: rgba(255,255,255,0.1);
+                backdrop-filter: blur(10px);
+                border-radius: 20px;
+                padding: 30px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            }
+            h1 { 
+                font-size: 2.5em; 
+                margin-bottom: 15px; 
+                text-align: center;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            }
+            .subtitle {
+                text-align: center; 
+                font-size: 1.1em; 
+                margin-bottom: 25px;
+                opacity: 0.9;
+            }
+            
+            .controls { 
+                display: flex; 
+                flex-wrap: wrap; 
+                gap: 10px; 
+                justify-content: center; 
+                margin: 20px 0;
+            }
+            button { 
+                background: linear-gradient(45deg, #4CAF50, #45a049);
+                color: white; 
+                border: none; 
+                padding: 12px 20px; 
+                font-size: 1em; 
+                border-radius: 25px; 
+                cursor: pointer; 
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                min-width: 140px;
+            }
+            button:hover { 
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            }
+            select { 
+                padding: 10px 15px; 
+                border-radius: 10px; 
+                border: none; 
+                background: rgba(255,255,255,0.9);
+                color: #333;
+                font-size: 1em;
+                min-width: 160px;
+            }
+            
+            .tab-button {
+                background: rgba(255,255,255,0.1);
+                margin: 0 5px;
+                min-width: 120px;
+                border: 1px solid rgba(255,255,255,0.3);
+            }
+            .tab-button.active {
+                background: linear-gradient(45deg, #4CAF50, #45a049);
+                transform: translateY(-2px);
+            }
+            .tab-content {
+                animation: fadeIn 0.5s ease;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            #result { 
+                background: rgba(0,0,0,0.3); 
+                padding: 20px; 
+                border-radius: 15px; 
+                margin-top: 20px; 
+                min-height: 100px;
+                border: 1px solid rgba(255,255,255,0.1);
+            }
+            
+            .track-item {
+                background: rgba(255,255,255,0.1);
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 10px;
+                border-left: 4px solid #4CAF50;
+            }
+            
+            @media (max-width: 768px) {
+                .container { padding: 15px; }
+                h1 { font-size: 2em; }
+                .controls { flex-direction: column; align-items: center; }
+                button { min-width: 200px; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
             <h1>🎵 Heckx เพลงออนไลน์</h1>
-            <p>ระบบกำลังโหลด... Error: {str(e)}</p>
-            <p><a href="/health" style="color: yellow;">ตรวจสอบสุขภาพระบบ</a></p>
-        </body>
-        </html>
-        '''
+            <p class="subtitle">ค้นหาเพลง Lo-fi, Jazz, Piano สำหรับทำงาน พักผ่อน</p>
+            
+            <!-- Navigation Tabs -->
+            <div class="controls">
+                <button class="tab-button active" onclick="showTab('music')">🎵 เพลง</button>
+                <button class="tab-button" onclick="showTab('drive')">☁️ บันทึก</button>
+                <button class="tab-button" onclick="showTab('quotes')">💭 คำคม</button>
+            </div>
+            
+            <!-- Music Tab -->
+            <div id="music-tab" class="tab-content">
+                <div class="controls">
+                    <select id="music-genre">
+                        <option value="">ทุกประเภท</option>
+                        <option value="jazz">Jazz (แจ๊ส)</option>
+                        <option value="lofi">Lo-fi (ทำงาน)</option>
+                        <option value="piano">Piano (เปียโน)</option>
+                        <option value="blues">Blues (บลูส์)</option>
+                        <option value="ambient">Ambient (ผ่อนคลาย)</option>
+                    </select>
+                    <button onclick="discoverMusic()">🔍 ค้นหาเพลง</button>
+                    <button onclick="getMusicRecommendations()">🎯 เพลงแนะนำ</button>
+                </div>
+            </div>
+            
+            <!-- Google Drive Tab -->
+            <div id="drive-tab" class="tab-content" style="display: none;">
+                <div class="controls">
+                    <button onclick="getDriveInfo()">📊 สถานะ</button>
+                    <button onclick="uploadSample()">📤 ทดสอบบันทึก</button>
+                    <button onclick="syncToCloud()">☁️ บันทึกเพลง</button>
+                </div>
+            </div>
+            
+            <!-- Quotes Tab -->
+            <div id="quotes-tab" class="tab-content" style="display: none;">
+                <div class="controls">
+                    <select id="quote-category">
+                        <option value="random">สุ่มคำคม</option>
+                        <option value="wisdom">ปัญญา</option>
+                        <option value="resilience">กำลังใจ</option>
+                        <option value="mindfulness">สติ</option>
+                        <option value="motivation">แรงบันดาลใจ</option>
+                    </select>
+                    <button onclick="getQuote()">💭 ดูคำคม</button>
+                    <button onclick="getDailyQuote()">📅 คำคมวันนี้</button>
+                </div>
+            </div>
+            
+            <div id="result">
+                <div style="text-align: center; padding: 20px;">
+                    <h3>🎵 ยินดีต้อนรับสู่ Heckx เพลงออนไลน์</h3>
+                    <p style="margin-top: 10px;">เลือกแท็บด้านบนเพื่อเริ่มใช้งาน</p>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            function showTab(tabName) {
+                // Hide all tabs
+                const tabs = document.querySelectorAll('.tab-content');
+                tabs.forEach(tab => tab.style.display = 'none');
+                
+                // Remove active class from all buttons
+                const buttons = document.querySelectorAll('.tab-button');
+                buttons.forEach(btn => btn.classList.remove('active'));
+                
+                // Show selected tab
+                document.getElementById(tabName + '-tab').style.display = 'block';
+                
+                // Add active class to clicked button
+                event.target.classList.add('active');
+                
+                // Clear result when switching tabs
+                document.getElementById('result').innerHTML = '<div style="text-align: center; padding: 20px;"><p>เลือกฟังก์ชันที่ต้องการใช้งาน</p></div>';
+            }
+            
+            function discoverMusic() {
+                const genre = document.getElementById('music-genre').value;
+                document.getElementById('result').innerHTML = '🔍 กำลังค้นหาเพลง...';
+                
+                let url = '/api/music/discover?min_downloads=2000';
+                if (genre) {
+                    url += `&query=${genre}`;
+                }
+                
+                fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.tracks.length > 0) {
+                        let html = '';
+                        data.tracks.forEach(track => {
+                            html += `
+                                <div class="track-item">
+                                    <h4>🎵 ${track.title}</h4>
+                                    <p><strong>ศิลปิน:</strong> ${track.artist}</p>
+                                    <p><strong>ประเภท:</strong> ${track.genre} | <strong>ความยาว:</strong> ${Math.floor(track.duration/60)}:${(track.duration%60).toString().padStart(2,'0')} นาที</p>
+                                    <div style="margin-top: 10px;">
+                                        <button onclick="downloadMusic(${track.id})" style="background: linear-gradient(45deg, #4CAF50, #45a049); margin-right: 10px;">⬇️ ดาวน์โหลด</button>
+                                        <button onclick="playMusic(${track.id})" style="background: linear-gradient(45deg, #2196F3, #1976D2);">▶️ เล่น</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        document.getElementById('result').innerHTML = html;
+                    } else {
+                        document.getElementById('result').innerHTML = '<div style="text-align: center; padding: 20px;">❌ ไม่พบเพลง ลองเปลี่ยนประเภทเพลง</div>';
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `<div style="text-align: center; padding: 20px;">❌ ค้นหาไม่สำเร็จ: ${e.message}</div>`;
+                });
+            }
+            
+            function downloadMusic(trackId) {
+                document.getElementById('result').innerHTML = '⬇️ กำลังเตรียมดาวน์โหลด...';
+                
+                fetch('/api/music/download', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({track_id: trackId})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        let html = `<div style="border-left: 4px solid #4CAF50; padding-left: 20px;">`;
+                        html += `<h3>✅ พร้อมดาวน์โหลด</h3>`;
+                        html += `<p><strong>เพลง:</strong> ${data.title}</p>`;
+                        html += `<p><a href="${data.download_url}" target="_blank" style="color: #4CAF50;">🔗 ดาวน์โหลดเพลง</a></p>`;
+                        html += `</div>`;
+                        document.getElementById('result').innerHTML = html;
+                    } else {
+                        document.getElementById('result').innerHTML = `<div style="text-align: center; padding: 20px;">❌ ดาวน์โหลดไม่สำเร็จ: ${data.message}</div>`;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `<div style="text-align: center; padding: 20px;">❌ เกิดข้อผิดพลาด: ${e.message}</div>`;
+                });
+            }
+            
+            function playMusic(trackId) {
+                fetch(`/api/music/play/${trackId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('result').innerHTML = `
+                            <div style="text-align: center; padding: 20px;">
+                                <h3>🎵 ${data.title}</h3>
+                                <audio controls autoplay style="width: 100%; max-width: 400px; margin-top: 15px;">
+                                    <source src="${data.audio_url}" type="audio/mpeg">
+                                </audio>
+                            </div>
+                        `;
+                    }
+                });
+            }
+            
+            function getMusicRecommendations() {
+                document.getElementById('result').innerHTML = '🎯 กำลังหาเพลงแนะนำ...';
+                
+                fetch('/api/music/recommendations')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.tracks.length > 0) {
+                        let html = '<h3 style="margin-bottom: 15px;">🎯 เพลงแนะนำสำหรับคุณ</h3>';
+                        data.tracks.forEach(track => {
+                            html += `
+                                <div class="track-item">
+                                    <h4>🎵 ${track.title}</h4>
+                                    <p><strong>ศิลปิน:</strong> ${track.artist}</p>
+                                    <p><strong>ประเภท:</strong> ${track.genre}</p>
+                                    <div style="margin-top: 10px;">
+                                        <button onclick="downloadMusic(${track.id})" style="background: linear-gradient(45deg, #4CAF50, #45a049); margin-right: 10px;">⬇️ ดาวน์โหลด</button>
+                                        <button onclick="playMusic(${track.id})" style="background: linear-gradient(45deg, #2196F3, #1976D2);">▶️ เล่น</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        document.getElementById('result').innerHTML = html;
+                    }
+                });
+            }
+            
+            function syncToCloud() {
+                document.getElementById('result').innerHTML = '☁️ กำลังบันทึกไปยัง Google Drive...';
+                
+                fetch('/api/music/drive/sync', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    let html = `<div style="border-left: 4px solid ${data.success ? '#4CAF50' : '#F44336'}; padding-left: 20px;">`;
+                    html += `<h3>${data.success ? '✅ บันทึกสำเร็จ' : '❌ บันทึกไม่สำเร็จ'}</h3>`;
+                    html += `<p><strong>สถานะ:</strong> ${data.message}</p>`;
+                    
+                    if (data.file_size_mb) {
+                        html += `<p><strong>ขนาดไฟล์:</strong> ${data.file_size_mb} MB</p>`;
+                    }
+                    
+                    if (data.upload_status) {
+                        html += `<p><strong>โหมดบันทึก:</strong> ${data.upload_status}</p>`;
+                    }
+                    
+                    if (data.folder_url) {
+                        html += `<p><a href="${data.folder_url}" target="_blank" style="color: #4CAF50;">📁 ดูโฟลเดอร์ Google Drive</a></p>`;
+                    }
+                    
+                    html += `</div>`;
+                    document.getElementById('result').innerHTML = html;
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `<div style="text-align: center; padding: 20px;">❌ บันทึกไม่สำเร็จ: ${e.message}</div>`;
+                });
+            }
+            
+            function uploadSample() {
+                document.getElementById('result').innerHTML = '📤 กำลังทดสอบบันทึกไฟล์...';
+                
+                fetch('/api/music/drive/sync', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        file_url: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3',
+                        filename: 'Heckx_Sample_Track.mp3'
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    let html = `<div style="border-left: 4px solid ${data.success ? '#4CAF50' : '#F44336'}; padding-left: 20px;">`;
+                    html += `<h3>${data.success ? '✅ ทดสอบสำเร็จ' : '❌ ทดสอบไม่สำเร็จ'}</h3>`;
+                    html += `<p><strong>สถานะ:</strong> ${data.message}</p>`;
+                    
+                    if (data.file_size_mb) {
+                        html += `<p><strong>ขนาดไฟล์:</strong> ${data.file_size_mb} MB</p>`;
+                    }
+                    
+                    if (data.upload_status) {
+                        html += `<p><strong>โหมดบันทึก:</strong> ${data.upload_status}</p>`;
+                    }
+                    
+                    if (data.folder_url) {
+                        html += `<p><a href="${data.folder_url}" target="_blank" style="color: #4CAF50;">📁 ดูโฟลเดอร์ Google Drive</a></p>`;
+                    }
+                    
+                    html += `</div>`;
+                    document.getElementById('result').innerHTML = html;
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `<div style="text-align: center; padding: 20px;">❌ เกิดข้อผิดพลาด: ${e.message}</div>`;
+                });
+            }
+            
+            function getDriveInfo() {
+                document.getElementById('result').innerHTML = '📊 กำลังตรวจสอบสถานะ...';
+                
+                fetch('/api/music/drive/info')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const info = data.drive_info;
+                        let html = `<div style="border-left: 4px solid #2196F3; padding-left: 20px;">`;
+                        html += `<h3>☁️ สถานะ Google Drive</h3>`;
+                        html += `<p><strong>สถานะ:</strong> ${info.enabled ? '✅ เชื่อมต่อแล้ว' : '❌ ไม่ได้เชื่อมต่อ'}</p>`;
+                        html += `<p><strong>ข้อความ:</strong> ${info.message}</p>`;
+                        
+                        if (info.enabled) {
+                            html += `<p><strong>โฟลเดอร์:</strong> ${info.folder_name}</p>`;
+                            html += `<p><strong>รหัสโฟลเดอร์:</strong> ${info.folder_id}</p>`;
+                            html += `<p><a href="${info.folder_url}" target="_blank" style="color: #4CAF50;">📁 เปิดโฟลเดอร์ Google Drive</a></p>`;
+                            html += `<p><strong>พร้อมบันทึก:</strong> ${info.upload_ready ? 'ใช่' : 'ไม่'}</p>`;
+                        }
+                        
+                        html += `</div>`;
+                        document.getElementById('result').innerHTML = html;
+                    } else {
+                        document.getElementById('result').innerHTML = `<div style="text-align: center; padding: 20px;">❌ เกิดข้อผิดพลาด: ${data.error}</div>`;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `<div style="text-align: center; padding: 20px;">❌ ตรวจสอบไม่สำเร็จ: ${e.message}</div>`;
+                });
+            }
+            
+            function getQuote() {
+                const category = document.getElementById('quote-category').value;
+                document.getElementById('result').innerHTML = '💭 กำลังค้นหาคำคม...';
+                
+                fetch('/api/quote', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        category: category,
+                        user_id: 'user_demo'
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        let html = `<div style="border-left: 4px solid #FF9800; padding-left: 20px;">`;
+                        html += `<h3>💭 ${data.text}</h3>`;
+                        html += `<p style="margin-top: 10px;"><strong>โดย:</strong> ${data.author}</p>`;
+                        html += `<p><strong>หมวดหมู่:</strong> ${data.category}</p>`;
+                        html += `</div>`;
+                        document.getElementById('result').innerHTML = html;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `<div style="text-align: center; padding: 20px;">❌ ไม่สามารถดึงคำคมได้: ${e.message}</div>`;
+                });
+            }
+            
+            function getDailyQuote() {
+                document.getElementById('result').innerHTML = '📅 กำลังดึงคำคมวันนี้...';
+                
+                fetch('/api/quote/daily')
+                .then(r => r.json())
+                .then(data => {
+                    let html = `<div style="border-left: 4px solid #FF9800; padding-left: 20px;">`;
+                    html += `<h3>📅 คำคมวันนี้</h3>`;
+                    html += `<p style="font-size: 1.2em; margin: 15px 0;">"${data.text}"</p>`;
+                    html += `<p><strong>โดย:</strong> ${data.author}</p>`;
+                    html += `</div>`;
+                    document.getElementById('result').innerHTML = html;
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `<div style="text-align: center; padding: 20px;">❌ ไม่สามารถดึงคำคมวันนี้ได้: ${e.message}</div>`;
+                });
+            }
+        </script>
+    </body>
+    </html>
+    '''
 
 @app.route('/old')
 def old_home():
