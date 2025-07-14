@@ -6,8 +6,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application files
+# Copy all application files
 COPY app.py .
+COPY ui_simple.html .
 
 # Expose port
 EXPOSE 8000

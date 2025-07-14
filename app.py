@@ -434,8 +434,25 @@ init_db()
 @app.route('/')
 def home():
     # Return the simplified Thai UI
-    with open('ui_simple.html', 'r', encoding='utf-8') as f:
-        return f.read()
+    try:
+        with open('ui_simple.html', 'r', encoding='utf-8') as f:
+            return f.read()
+    except Exception as e:
+        # Fallback to simple HTML if file not found
+        return f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>🎵 Heckx เพลงออนไลน์</title>
+            <meta charset="UTF-8">
+        </head>
+        <body style="font-family: Arial; padding: 20px; background: #667eea; color: white;">
+            <h1>🎵 Heckx เพลงออนไลน์</h1>
+            <p>ระบบกำลังโหลด... Error: {str(e)}</p>
+            <p><a href="/health" style="color: yellow;">ตรวจสอบสุขภาพระบบ</a></p>
+        </body>
+        </html>
+        '''
 
 @app.route('/old')
 def old_home():
