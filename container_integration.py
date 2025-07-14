@@ -66,8 +66,12 @@ class ContainerIntegration:
             return {"status": "down", "error": "Connection failed"}
 
     def use_kokoro_tts(self, text, voice="thai_female", speed=1.0):
-        """Use Kokoro TTS for voice synthesis"""
+        """Use Kokoro TTS for voice synthesis with timeout protection"""
         try:
+            # Limit text length to prevent hanging
+            if len(text) > 500:
+                text = text[:500] + "..."
+            
             tts_endpoint = f"{self.services['kokoro_tts']['url']}/synthesize"
             
             payload = {
@@ -77,18 +81,37 @@ class ContainerIntegration:
                 "format": "wav"
             }
             
-            response = requests.post(tts_endpoint, json=payload, timeout=30)
+            # Use shorter timeout and connection pooling
+            response = requests.post(
+                tts_endpoint, 
+                json=payload, 
+                timeout=(5, 15),  # (connect_timeout, read_timeout)
+                headers={
+                    "Connection": "close",
+                    "Content-Type": "application/json"
+                }
+            )
             
             if response.status_code == 200:
+                # Limit response size to prevent memory issues
+                max_size = 10 * 1024 * 1024  # 10MB limit
+                if len(response.content) > max_size:
+                    return {"success": False, "error": "Response too large"}
+                
                 return {
                     "success": True,
                     "audio_data": response.content,
                     "format": "wav",
-                    "service": "kokoro_tts"
+                    "service": "kokoro_tts",
+                    "size_bytes": len(response.content)
                 }
             else:
                 return {"success": False, "error": f"TTS failed: {response.status_code}"}
                 
+        except requests.exceptions.Timeout:
+            return {"success": False, "error": "TTS timeout - service may be overloaded"}
+        except requests.exceptions.ConnectionError:
+            return {"success": False, "error": "TTS connection failed - service unavailable"}
         except Exception as e:
             return {"success": False, "error": f"Kokoro TTS error: {str(e)}"}
 
