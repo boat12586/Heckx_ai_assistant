@@ -1,0 +1,44 @@
+# Ignore unnecessary files
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.git
+.gitignore
+README.md
+Readme.md
+.env*
+.venv
+venv/
+.DS_Store
+*.log
+logs/
+conversations.db
+*.db
+*.sqlite3
+
+# Ignore all Python files except the ones we need
+*.py
+!web_app.py
+!config.py
+
+# Ignore all documentation and scripts
+docs/
+scripts/
+tests/
+*.md
+*.txt
+!requirements.txt
+
+# Ignore audio and media files
+*.wav
+*.mp3
+*.mp4
+*.avi
+
+# Ignore deployment files
+docker-compose*.yml
+railway.json
+render.yaml

@@ -4,22 +4,13 @@ Web version of Heckx AI Assistant for Railway deployment
 """
 
 import os
-from flask import Flask, render_template, request, jsonify
+import json
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-import whisper
-from rich.console import Console
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationChain
-from langchain.prompts import PromptTemplate
-from langchain_community.llms import Ollama
-from config import Config
 
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
-
-# Initialize components
-console = Console()
 
 # For Railway deployment, we'll use a simpler setup
 class SimpleAI:
