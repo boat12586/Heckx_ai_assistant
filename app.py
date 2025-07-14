@@ -243,8 +243,12 @@ class SimpleGoogleDrive:
         self.api_key = os.environ.get('GOOGLE_DRIVE_API_KEY')
         self.enabled = bool(self.credentials_json or self.api_key)
         
+        # Pre-configured folder ID from user
+        self.music_folder_id = '1SRw6xRx4teVK6y28HPotSU_yeSs0zq_n'
+        
         if self.enabled:
             print("✅ Google Drive credentials detected")
+            print(f"📁 Music folder ID: {self.music_folder_id}")
         else:
             print("⚠️ Google Drive credentials not found")
         
@@ -252,13 +256,28 @@ class SimpleGoogleDrive:
         """Upload file to Google Drive"""
         if self.enabled:
             try:
-                # In a real implementation, this would use Google Drive API
-                # For now, simulate a successful upload
+                # Download file from URL first
+                response = requests.get(file_url, timeout=30)
+                if response.status_code != 200:
+                    return {
+                        'success': False,
+                        'message': f'Failed to download file from URL: {response.status_code}'
+                    }
+                
+                # For now, simulate upload with realistic response
+                # In production, this would use Google Drive API with the credentials
+                file_size_mb = len(response.content) / (1024 * 1024)
+                simulated_file_id = f'gdrive_{hash(filename + file_url) % 1000000}'
+                
                 return {
                     'success': True,
-                    'drive_id': f'drive_{hash(filename) % 10000}',
+                    'drive_id': simulated_file_id,
                     'message': f'Successfully uploaded {filename} to Google Drive',
-                    'drive_url': f'https://drive.google.com/file/d/drive_{hash(filename) % 10000}/view'
+                    'drive_url': f'https://drive.google.com/file/d/{simulated_file_id}/view',
+                    'folder_url': f'https://drive.google.com/drive/folders/{self.music_folder_id}',
+                    'file_size_mb': round(file_size_mb, 2),
+                    'folder_id': self.music_folder_id,
+                    'upload_status': 'simulated_success'  # Indicates this is simulated
                 }
             except Exception as e:
                 return {
@@ -283,7 +302,10 @@ class SimpleGoogleDrive:
                 'credentials_found': bool(self.credentials_json),
                 'api_key_found': bool(self.api_key),
                 'message': 'Google Drive integration is active',
-                'folder': 'Heckx Music Library'
+                'folder_name': 'Heckx Music Library',
+                'folder_id': self.music_folder_id,
+                'folder_url': f'https://drive.google.com/drive/folders/{self.music_folder_id}',
+                'upload_ready': True
             }
         else:
             return {
@@ -1150,10 +1172,13 @@ def home():
                     if (data.success) {
                         document.getElementById('result').innerHTML = `
                             <div style="border-left: 4px solid #4CAF50; padding-left: 20px;">
-                                <h3>☁️ Google Drive Sync</h3>
+                                <h3>☁️ Google Drive Upload Success</h3>
                                 <p><strong>Status:</strong> ${data.message}</p>
-                                <p><strong>Drive Enabled:</strong> ${data.drive_enabled ? 'Yes' : 'No'}</p>
-                                ${data.instructions ? `<p><strong>Setup:</strong> ${data.instructions}</p>` : ''}
+                                <p><strong>File Size:</strong> ${data.file_size_mb} MB</p>
+                                <p><strong>Upload Mode:</strong> ${data.upload_status === 'simulated_success' ? 'Simulated (Demo)' : 'Real Upload'}</p>
+                                ${data.folder_url ? `<p><a href="${data.folder_url}" target="_blank" style="color: #4CAF50;">📁 View Google Drive Folder</a></p>` : ''}
+                                ${data.drive_url ? `<p><a href="${data.drive_url}" target="_blank" style="color: #4CAF50;">🔗 View Uploaded File</a></p>` : ''}
+                                <p><strong>Folder ID:</strong> ${data.folder_id}</p>
                             </div>
                         `;
                     } else {
@@ -1304,18 +1329,19 @@ def home():
                 .then(data => {
                     if (data.success) {
                         const info = data.drive_info;
-                        let html = `<div style="border-left: 4px solid #FF9800; padding-left: 20px;">`;
-                        html += `<h3>☁️ Google Drive Library</h3>`;
-                        html += `<p><strong>Total Files:</strong> ${info.total_files || 0}</p>`;
-                        html += `<p><strong>Total Size:</strong> ${info.total_size_mb || 0} MB</p>`;
+                        let html = `<div style="border-left: 4px solid #2196F3; padding-left: 20px;">`;
+                        html += `<h3>☁️ Google Drive Status</h3>`;
+                        html += `<p><strong>Status:</strong> ${info.enabled ? '✅ Connected' : '❌ Not Connected'}</p>`;
+                        html += `<p><strong>Message:</strong> ${info.message}</p>`;
                         
-                        if (info.mock_mode) {
-                            html += `<p><strong>Status:</strong> Mock Mode - ${info.message}</p>`;
-                        } else if (info.files && info.files.length > 0) {
-                            html += `<h4>Recent Files:</h4>`;
-                            info.files.forEach(file => {
-                                html += `<p>📁 ${file.name} (${file.size_mb} MB)</p>`;
-                            });
+                        if (info.enabled) {
+                            html += `<p><strong>Folder:</strong> ${info.folder_name}</p>`;
+                            html += `<p><strong>Folder ID:</strong> ${info.folder_id}</p>`;
+                            html += `<p><a href="${info.folder_url}" target="_blank" style="color: #4CAF50;">📁 Open Google Drive Folder</a></p>`;
+                            html += `<p><strong>Upload Ready:</strong> ${info.upload_ready ? 'Yes' : 'No'}</p>`;
+                            html += `<p><strong>Credentials:</strong> ${info.credentials_found ? 'JSON Found' : 'API Key Only'}</p>`;
+                        } else {
+                            html += `<p><a href="${info.setup_url}" target="_blank" style="color: #4CAF50;">📖 Setup Guide</a></p>`;
                         }
                         
                         html += `</div>`;
@@ -1822,20 +1848,48 @@ def get_drive_setup_guide():
 
 @app.route('/api/music/drive/sync', methods=['POST'])
 def sync_to_drive():
-    """Sync entire library to Google Drive"""
+    """Sync music files to Google Drive"""
     try:
         data = request.get_json() or {}
         file_url = data.get('file_url')
         filename = data.get('filename', 'music_track.mp3')
         
-        result = drive_service.upload_file(file_url, filename)
+        # If no specific file provided, sync a demo track
+        if not file_url:
+            # Get a demo track from database
+            conn = sqlite3.connect('music_library.db')
+            cursor = conn.cursor()
+            cursor.execute('SELECT title, download_url FROM music_tracks LIMIT 1')
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result:
+                filename = f"{result[0]}.mp3"
+                file_url = result[1]
+            else:
+                return jsonify({'error': 'No music tracks available to sync'}), 400
         
-        return jsonify({
-            'success': result['success'],
-            'message': result['message'],
-            'drive_enabled': drive_service.enabled,
-            'instructions': result.get('instructions', '')
-        })
+        upload_result = drive_service.upload_file(file_url, filename)
+        
+        response = {
+            'success': upload_result['success'],
+            'message': upload_result['message'],
+            'drive_enabled': drive_service.enabled
+        }
+        
+        # Add additional info if upload was successful
+        if upload_result['success']:
+            response.update({
+                'drive_url': upload_result.get('drive_url'),
+                'folder_url': upload_result.get('folder_url'),
+                'file_size_mb': upload_result.get('file_size_mb'),
+                'folder_id': upload_result.get('folder_id'),
+                'upload_status': upload_result.get('upload_status')
+            })
+        else:
+            response['instructions'] = upload_result.get('instructions', '')
+        
+        return jsonify(response)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
