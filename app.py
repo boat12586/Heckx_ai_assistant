@@ -45,28 +45,28 @@ class SimpleMusicService:
             )
         ''')
         
-        # Add demo tracks with real working URLs
+        # Add demo tracks with real music URLs
         cursor.execute('SELECT COUNT(*) FROM music_tracks')
         if cursor.fetchone()[0] == 0:
             demo_music = [
                 ('demo', 'demo_jazz_1', 'Smooth Jazz Piano', 'Jazz Artist', 'jazz, smooth, piano, relaxing', 
-                 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', 
-                 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav',
+                 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3', 
+                 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3',
                  180, 5000, 250, 'jazz', 'relaxing'),
                 
-                ('demo', 'demo_lofi_1', 'Lo-fi Chill Beat', 'Lo-fi Producer', 'lofi, chill, study, beats, focus',
-                 'https://archive.org/download/testmp3testfile/mpthreetest.mp3',
-                 'https://archive.org/download/testmp3testfile/mpthreetest.mp3',
+                ('demo', 'demo_lofi_1', 'Lo-fi Study Beat', 'Chill Producer', 'lofi, chill, study, beats, focus',
+                 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_2165f1a07c.mp3?filename=lofi-study-112191.mp3',
+                 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_2165f1a07c.mp3?filename=lofi-study-112191.mp3',
                  165, 7200, 420, 'lofi', 'focus'),
                 
-                ('demo', 'demo_blue_1', 'Blues Guitar Solo', 'Blues Master', 'blues, guitar, emotional, solo',
-                 'https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav',
-                 'https://www2.cs.uic.edu/~i101/SoundFiles/BabyElephantWalk60.wav',
+                ('demo', 'demo_blue_1', 'Midnight Blues', 'Blues Soul', 'blues, guitar, emotional, midnight',
+                 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3',
+                 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3',
                  210, 3500, 180, 'blues', 'melancholic'),
                 
-                ('demo', 'demo_piano_1', 'Classical Piano', 'Piano Virtuoso', 'piano, classical, elegant, peaceful',
-                 'https://www.soundjay.com/misc/sounds/bell-ringing-01.wav',
-                 'https://www.soundjay.com/misc/sounds/bell-ringing-01.wav',
+                ('demo', 'demo_piano_1', 'Peaceful Piano', 'Piano Virtuoso', 'piano, classical, peaceful, meditation',
+                 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3',
+                 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3',
                  240, 6800, 340, 'classical', 'peaceful')
             ]
             
@@ -1076,10 +1076,31 @@ def home():
             }
             
             function playTrack(trackId, title, artist) {
-                const player = document.getElementById('audioPlayer');
-                player.src = `/api/music/play/${trackId}`;
-                player.play();
-                document.getElementById('nowPlaying').innerHTML = `🎵 Now Playing: ${title} by ${artist}`;
+                fetch(`/api/music/play/${trackId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const player = document.getElementById('audioPlayer');
+                        player.src = data.audio_url;
+                        player.play().then(() => {
+                            document.getElementById('nowPlaying').innerHTML = `🎵 Now Playing: ${title} by ${artist}`;
+                            document.getElementById('result').innerHTML = `
+                                <div style="border-left: 4px solid #4CAF50; padding-left: 20px;">
+                                    <h3>🎵 Playing Music</h3>
+                                    <p><strong>Track:</strong> ${data.title}</p>
+                                    <p><strong>Status:</strong> ${data.message}</p>
+                                </div>
+                            `;
+                        }).catch(e => {
+                            document.getElementById('result').innerHTML = `❌ Playback error: ${e.message}`;
+                        });
+                    } else {
+                        document.getElementById('result').innerHTML = `❌ Failed to load track: ${data.error}`;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `❌ Track error: ${e.message}`;
+                });
             }
             
             function loadGenresAndMoods() {
@@ -1604,19 +1625,26 @@ def get_music_genres():
 
 @app.route('/api/music/play/<int:track_id>')
 def stream_music(track_id):
-    """Stream music file"""
+    """Get music track URL for streaming"""
     try:
         conn = sqlite3.connect('music_library.db')
         cursor = conn.cursor()
         
-        cursor.execute('SELECT file_path FROM music_tracks WHERE id = ?', (track_id,))
+        cursor.execute('SELECT title, preview_url, download_url FROM music_tracks WHERE id = ?', (track_id,))
         result = cursor.fetchone()
         conn.close()
         
-        if result and result[0] and os.path.exists(result[0]):
-            return send_file(result[0], as_attachment=False)
+        if result:
+            title, preview_url, download_url = result
+            # Return URL for client-side audio player
+            return jsonify({
+                'success': True,
+                'title': title,
+                'audio_url': preview_url or download_url,
+                'message': f'Ready to play: {title}'
+            })
         else:
-            return jsonify({'error': 'Track file not found'}), 404
+            return jsonify({'error': 'Track not found'}), 404
             
     except Exception as e:
         return jsonify({'error': str(e)}), 500
