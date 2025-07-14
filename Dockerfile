@@ -2,21 +2,15 @@ FROM python:3.11-alpine
 
 WORKDIR /app
 
-# Copy requirements and install dependencies
+# Copy requirements and install dependencies  
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
-COPY app_minimal.py app.py
-COPY railway.json .
+COPY app_railway.py app.py
 
-# Create non-root user for security
-RUN adduser -D -s /bin/sh appuser
-RUN chown -R appuser:appuser /app
-USER appuser
-
-# Expose port (Railway will set PORT env var)
+# Expose port
 EXPOSE 8000
 
-# Start with gunicorn for production - let Railway handle PORT
-CMD gunicorn app:app --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120 --keep-alive 5 --max-requests 1000 --access-logfile - --error-logfile -
+# Start with Python directly (simpler than gunicorn for debugging)
+CMD ["python", "app.py"]
