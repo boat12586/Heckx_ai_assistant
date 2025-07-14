@@ -645,7 +645,7 @@ def home():
                 <div class="controls">
                     <button onclick="getRecommendations()">⭐ Recommendations</button>
                     <button onclick="getDriveInfo()">📊 Drive Info</button>
-                    <button onclick="createPlaylist()">📝 Create Playlist</button>
+                    <button onclick="showSetupGuide()">📖 Setup Guide</button>
                 </div>
             </div>
             
@@ -1211,6 +1211,70 @@ def home():
                 });
             }
             
+            function showSetupGuide() {
+                document.getElementById('result').innerHTML = '📖 Loading Google Drive setup guide...';
+                
+                fetch('/api/music/drive/setup-guide')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const guide = data.guide;
+                        let stepsHtml = '';
+                        
+                        guide.steps.forEach(step => {
+                            let detailsHtml = step.details.map(detail => `<li>${detail}</li>`).join('');
+                            stepsHtml += `
+                                <div style="margin: 15px 0; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px;">
+                                    <h4 style="color: #4CAF50; margin-bottom: 10px;">${step.title}</h4>
+                                    <p style="margin-bottom: 10px;">${step.description}</p>
+                                    ${step.url ? `<p><a href="${step.url}" target="_blank" style="color: #4CAF50;">🔗 ${step.url}</a></p>` : ''}
+                                    <ul style="margin-left: 20px;">
+                                        ${detailsHtml}
+                                    </ul>
+                                </div>
+                            `;
+                        });
+                        
+                        document.getElementById('result').innerHTML = `
+                            <div style="border-left: 4px solid #2196F3; padding-left: 20px; max-height: 500px; overflow-y: auto;">
+                                <h3>${guide.title}</h3>
+                                ${stepsHtml}
+                                
+                                <div style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px;">
+                                    <h4>📋 ตัวอย่าง JSON Credentials:</h4>
+                                    <pre style="background: #333; padding: 10px; border-radius: 5px; font-size: 12px; overflow-x: auto;">
+{
+  "type": "service_account",
+  "project_id": "heckx-music-drive-123456",
+  "private_key_id": "abcd1234...",
+  "private_key": "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n",
+  "client_email": "heckx-music-service@your-project.iam.gserviceaccount.com",
+  "client_id": "123456789012345678901"
+}</pre>
+                                </div>
+                                
+                                <div style="margin-top: 15px; padding: 15px; background: rgba(76,175,80,0.2); border-radius: 10px;">
+                                    <h4>🚀 Railway Environment Variable:</h4>
+                                    <p><strong>Name:</strong> <code>GOOGLE_DRIVE_CREDENTIALS</code></p>
+                                    <p><strong>Value:</strong> วาง JSON content ทั้งหมดที่ copy มา</p>
+                                </div>
+                                
+                                <div style="margin-top: 15px; text-align: center;">
+                                    <button onclick="testDriveConnection()" style="background: #4CAF50; padding: 10px 20px; border: none; border-radius: 5px; color: white; cursor: pointer;">
+                                        🔧 Test Connection หลังจากตั้งค่าเสร็จ
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        document.getElementById('result').innerHTML = `❌ Failed to load setup guide`;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `❌ Guide error: ${e.message}`;
+                });
+            }
+            
             function getDriveInfo() {
                 document.getElementById('result').innerHTML = '📊 Loading Google Drive info...';
                 
@@ -1629,6 +1693,101 @@ def test_drive_connection():
             'success': result['success'],
             'message': result['message'],
             'test_result': result.get('test_result', 'No test performed')
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/music/drive/setup-guide')
+def get_drive_setup_guide():
+    """Get detailed Google Drive setup instructions"""
+    try:
+        guide = {
+            'title': '🔧 วิธีการตั้งค่า Google Drive API',
+            'steps': [
+                {
+                    'title': '1. สร้าง Google Cloud Project',
+                    'description': 'ไปที่ Google Cloud Console และสร้าง project ใหม่',
+                    'url': 'https://console.cloud.google.com',
+                    'details': [
+                        'คลิก "Select a project" ด้านบน',
+                        'คลิก "NEW PROJECT"',
+                        'ตั้งชื่อ project เช่น "Heckx-Music-Drive"',
+                        'คลิก "CREATE"'
+                    ]
+                },
+                {
+                    'title': '2. เปิดใช้งาน Google Drive API',
+                    'description': 'ใน Google Cloud Console หา APIs & Services',
+                    'details': [
+                        'ไปที่ "APIs & Services" > "Library"',
+                        'ค้นหา "Google Drive API"',
+                        'คลิก "Google Drive API" และ "ENABLE"'
+                    ]
+                },
+                {
+                    'title': '3. สร้าง Service Account',
+                    'description': 'สร้าง credentials สำหรับแอพพลิเคชัน',
+                    'details': [
+                        'ไปที่ "APIs & Services" > "Credentials"',
+                        'คลิก "+ CREATE CREDENTIALS" > "Service account"',
+                        'ตั้งชื่อ service account: "heckx-music-service"',
+                        'เลือก Role: "Editor" หรือ "Storage Admin"',
+                        'คลิก "CREATE AND CONTINUE" และ "DONE"'
+                    ]
+                },
+                {
+                    'title': '4. สร้าง JSON Key',
+                    'description': 'Download credentials file สำหรับใช้งาน',
+                    'details': [
+                        'คลิกที่ service account ที่สร้างไว้',
+                        'ไปที่ tab "KEYS"',
+                        'คลิก "ADD KEY" > "Create new key"',
+                        'เลือก "JSON" และคลิก "CREATE"',
+                        'ไฟล์ JSON จะ download อัตโนมัติ'
+                    ]
+                },
+                {
+                    'title': '5. เพิ่ม Credentials ใน Railway',
+                    'description': 'นำ JSON credentials ไปใส่ใน Railway',
+                    'details': [
+                        'เปิดไฟล์ JSON ที่ download มา',
+                        'Copy เนื้อหาทั้งหมด',
+                        'ไปที่ Railway Dashboard > Variables',
+                        'เพิ่ม Variable: GOOGLE_DRIVE_CREDENTIALS',
+                        'วาง JSON content เป็น Value',
+                        'คลิก "Add" และรอ deploy'
+                    ]
+                }
+            ],
+            'example_json': {
+                'type': 'service_account',
+                'project_id': 'heckx-music-drive-123456',
+                'private_key_id': 'abcd1234...',
+                'private_key': '-----BEGIN PRIVATE KEY-----\\nMIIEvAIBADANBgkqhkiG...\\n-----END PRIVATE KEY-----\\n',
+                'client_email': 'heckx-music-service@heckx-music-drive-123456.iam.gserviceaccount.com',
+                'client_id': '123456789012345678901'
+            },
+            'railway_steps': [
+                'ไปที่ Railway Dashboard',
+                'เลือก project "Heckx AI Assistant"',
+                'คลิก tab "Variables"',
+                'คลิก "New Variable"',
+                'Name: GOOGLE_DRIVE_CREDENTIALS',
+                'Value: วาง JSON content',
+                'คลิก "Add"'
+            ],
+            'test_steps': [
+                'รอ Railway deploy (2-3 นาที)',
+                'refresh หน้าเว็บ Heckx AI Assistant',
+                'ไปที่ tab "🎵 Music"',
+                'คลิก "🔧 Test Drive"',
+                'ถ้าสำเร็จจะแสดง "✅ Google Drive Connection Test"'
+            ]
+        }
+        
+        return jsonify({
+            'success': True,
+            'guide': guide
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
