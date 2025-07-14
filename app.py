@@ -257,6 +257,7 @@ class SimpleGoogleDrive:
         if self.enabled:
             try:
                 # Download file from URL first
+                print(f"📥 Downloading file from: {file_url}")
                 response = requests.get(file_url, timeout=30)
                 if response.status_code != 200:
                     return {
@@ -264,22 +265,57 @@ class SimpleGoogleDrive:
                         'message': f'Failed to download file from URL: {response.status_code}'
                     }
                 
-                # For now, simulate upload with realistic response
-                # In production, this would use Google Drive API with the credentials
-                file_size_mb = len(response.content) / (1024 * 1024)
-                simulated_file_id = f'gdrive_{hash(filename + file_url) % 1000000}'
+                file_content = response.content
+                file_size_mb = len(file_content) / (1024 * 1024)
+                
+                # Initialize Google Drive API
+                drive_service = self._get_drive_service()
+                if not drive_service:
+                    return {
+                        'success': False,
+                        'message': 'Failed to initialize Google Drive service'
+                    }
+                
+                # Create file metadata
+                file_metadata = {
+                    'name': filename,
+                    'parents': [self.music_folder_id]
+                }
+                
+                # Create media upload
+                import io
+                from googleapiclient.http import MediaIoBaseUpload
+                
+                file_stream = io.BytesIO(file_content)
+                media = MediaIoBaseUpload(
+                    file_stream,
+                    mimetype='audio/mpeg',
+                    resumable=True
+                )
+                
+                # Upload file
+                print(f"📤 Uploading {filename} to Google Drive...")
+                file = drive_service.files().create(
+                    body=file_metadata,
+                    media_body=media,
+                    fields='id'
+                ).execute()
+                
+                file_id = file.get('id')
                 
                 return {
                     'success': True,
-                    'drive_id': simulated_file_id,
+                    'drive_id': file_id,
                     'message': f'Successfully uploaded {filename} to Google Drive',
-                    'drive_url': f'https://drive.google.com/file/d/{simulated_file_id}/view',
+                    'drive_url': f'https://drive.google.com/file/d/{file_id}/view',
                     'folder_url': f'https://drive.google.com/drive/folders/{self.music_folder_id}',
                     'file_size_mb': round(file_size_mb, 2),
                     'folder_id': self.music_folder_id,
-                    'upload_status': 'simulated_success'  # Indicates this is simulated
+                    'upload_status': 'real_upload'
                 }
+                
             except Exception as e:
+                print(f"❌ Upload error: {str(e)}")
                 return {
                     'success': False,
                     'message': f'Upload failed: {str(e)}',
@@ -292,6 +328,32 @@ class SimpleGoogleDrive:
                 'instructions': 'เพิ่มตัวแปรสภาพแวดล้อม GOOGLE_DRIVE_CREDENTIALS',
                 'setup_steps': self._get_setup_steps()
             }
+    
+    def _get_drive_service(self):
+        """Initialize Google Drive service"""
+        try:
+            import json
+            from google.oauth2 import service_account
+            from googleapiclient.discovery import build
+            
+            if self.credentials_json:
+                # Parse credentials JSON
+                credentials_info = json.loads(self.credentials_json)
+                credentials = service_account.Credentials.from_service_account_info(
+                    credentials_info,
+                    scopes=['https://www.googleapis.com/auth/drive.file']
+                )
+                
+                # Build service
+                service = build('drive', 'v3', credentials=credentials)
+                return service
+            else:
+                print("❌ No credentials JSON found")
+                return None
+                
+        except Exception as e:
+            print(f"❌ Failed to initialize Drive service: {str(e)}")
+            return None
     
     def get_drive_info(self) -> Dict:
         """Get Google Drive status"""
@@ -338,13 +400,29 @@ class SimpleGoogleDrive:
             }
         
         try:
-            # Simulate connection test
+            # Test real Google Drive connection
+            drive_service = self._get_drive_service()
+            if not drive_service:
+                return {
+                    'success': False,
+                    'message': 'Failed to initialize Google Drive service'
+                }
+            
+            # Test by getting folder info
+            folder_info = drive_service.files().get(
+                fileId=self.music_folder_id,
+                fields='id,name,mimeType'
+            ).execute()
+            
             return {
                 'success': True,
                 'message': 'Google Drive connection successful',
-                'test_result': 'API accessible'
+                'test_result': f'Connected to folder: {folder_info.get("name", "Unknown")}',
+                'folder_name': folder_info.get('name'),
+                'folder_verified': True
             }
         except Exception as e:
+            print(f"❌ Connection test failed: {str(e)}")
             return {
                 'success': False, 
                 'message': f'Connection failed: {str(e)}'
@@ -1175,7 +1253,7 @@ def home():
                                 <h3>☁️ Google Drive Upload Success</h3>
                                 <p><strong>Status:</strong> ${data.message}</p>
                                 <p><strong>File Size:</strong> ${data.file_size_mb} MB</p>
-                                <p><strong>Upload Mode:</strong> ${data.upload_status === 'simulated_success' ? 'Simulated (Demo)' : 'Real Upload'}</p>
+                                <p><strong>Upload Mode:</strong> ${data.upload_status === 'real_upload' ? '✅ Real Upload' : '🔧 Simulated (Demo)'}</p>
                                 ${data.folder_url ? `<p><a href="${data.folder_url}" target="_blank" style="color: #4CAF50;">📁 View Google Drive Folder</a></p>` : ''}
                                 ${data.drive_url ? `<p><a href="${data.drive_url}" target="_blank" style="color: #4CAF50;">🔗 View Uploaded File</a></p>` : ''}
                                 <p><strong>Folder ID:</strong> ${data.folder_id}</p>
