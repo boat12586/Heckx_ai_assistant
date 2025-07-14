@@ -433,6 +433,12 @@ init_db()
 
 @app.route('/')
 def home():
+    # Return the simplified Thai UI
+    with open('ui_simple.html', 'r', encoding='utf-8') as f:
+        return f.read()
+
+@app.route('/old')
+def old_home():
     return '''
     <!DOCTYPE html>
     <html>
