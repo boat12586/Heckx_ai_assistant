@@ -607,19 +607,19 @@ def home():
     </head>
     <body>
         <div class="container">
-            <h1>🚀 Heckx AI Assistant</h1>
+            <h1>🎵 Heckx เพลงออนไลน์</h1>
             <p style="text-align: center; font-size: 1.2em; margin-bottom: 30px;">
-                🎵 <strong>Music Discovery Hub</strong> - Lo-fi, Jazz, Piano & Ambient Music + Smart Quotes (v2.0)
+                <strong>ค้นหาเพลง</strong> - Lo-fi, Jazz, Piano สำหรับทำงาน พักผ่อน
             </p>
             
             <div class="features-grid">
                 <div class="feature-card">
-                    <h3>🎭 Smart Quotes</h3>
-                    <p>Categorized wisdom quotes with intelligent recommendations</p>
+                    <h3>🎵 ค้นหาเพลง</h3>
+                    <p>เพลง Lo-fi, Jazz, Piano คุณภาพสูง</p>
                 </div>
                 <div class="feature-card">
-                    <h3>🎵 Music Discovery</h3>
-                    <p>Premium Lo-fi, Jazz, Piano music from Pixabay with 2000+ downloads</p>
+                    <h3>☁️ บันทึกเพลง</h3>
+                    <p>เก็บเพลงโปรดไว้ใน Google Drive</p>
                 </div>
                 <div class="feature-card">
                     <h3>☁️ Google Drive Backup</h3>
@@ -1386,7 +1386,7 @@ def home():
             }
             
             function getDriveInfo() {
-                document.getElementById('result').innerHTML = '📊 Loading Google Drive info...';
+                document.getElementById('result').innerHTML = '📊 กำลังตรวจสอบสถานะ...';
                 
                 fetch('/api/music/drive/info')
                 .then(r => r.json())
@@ -1394,28 +1394,25 @@ def home():
                     if (data.success) {
                         const info = data.drive_info;
                         let html = `<div style="border-left: 4px solid #2196F3; padding-left: 20px;">`;
-                        html += `<h3>☁️ Google Drive Status</h3>`;
-                        html += `<p><strong>Status:</strong> ${info.enabled ? '✅ Connected' : '❌ Not Connected'}</p>`;
-                        html += `<p><strong>Message:</strong> ${info.message}</p>`;
+                        html += `<h3>☁️ สถานะ Google Drive</h3>`;
+                        html += `<p><strong>สถานะ:</strong> ${info.enabled ? '✅ เชื่อมต่อแล้ว' : '❌ ไม่ได้เชื่อมต่อ'}</p>`;
+                        html += `<p><strong>ข้อความ:</strong> ${info.message}</p>`;
                         
                         if (info.enabled) {
-                            html += `<p><strong>Folder:</strong> ${info.folder_name}</p>`;
-                            html += `<p><strong>Folder ID:</strong> ${info.folder_id}</p>`;
-                            html += `<p><a href="${info.folder_url}" target="_blank" style="color: #4CAF50;">📁 Open Google Drive Folder</a></p>`;
-                            html += `<p><strong>Upload Ready:</strong> ${info.upload_ready ? 'Yes' : 'No'}</p>`;
-                            html += `<p><strong>Credentials:</strong> ${info.credentials_found ? 'JSON Found' : 'API Key Only'}</p>`;
-                        } else {
-                            html += `<p><a href="${info.setup_url}" target="_blank" style="color: #4CAF50;">📖 Setup Guide</a></p>`;
+                            html += `<p><strong>โฟลเดอร์:</strong> ${info.folder_name}</p>`;
+                            html += `<p><strong>รหัสโฟลเดอร์:</strong> ${info.folder_id}</p>`;
+                            html += `<p><a href="${info.folder_url}" target="_blank" style="color: #4CAF50;">📁 เปิดโฟลเดอร์ Google Drive</a></p>`;
+                            html += `<p><strong>พร้อมบันทึก:</strong> ${info.upload_ready ? 'ใช่' : 'ไม่'}</p>`;
                         }
                         
                         html += `</div>`;
                         document.getElementById('result').innerHTML = html;
                     } else {
-                        document.getElementById('result').innerHTML = `❌ Error: ${data.error}`;
+                        document.getElementById('result').innerHTML = `❌ เกิดข้อผิดพลาด: ${data.error}`;
                     }
                 })
                 .catch(e => {
-                    document.getElementById('result').innerHTML = `❌ Drive info failed: ${e.message}`;
+                    document.getElementById('result').innerHTML = `❌ ตรวจสอบไม่สำเร็จ: ${e.message}`;
                 });
             }
             
