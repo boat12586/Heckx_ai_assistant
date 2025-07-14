@@ -45,28 +45,28 @@ class SimpleMusicService:
             )
         ''')
         
-        # Add demo tracks with real music URLs
+        # Add demo tracks with working audio URLs
         cursor.execute('SELECT COUNT(*) FROM music_tracks')
         if cursor.fetchone()[0] == 0:
             demo_music = [
                 ('demo', 'demo_jazz_1', 'Smooth Jazz Piano', 'Jazz Artist', 'jazz, smooth, piano, relaxing', 
-                 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3', 
-                 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3',
+                 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 
+                 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3',
                  180, 5000, 250, 'jazz', 'relaxing'),
                 
                 ('demo', 'demo_lofi_1', 'Lo-fi Study Beat', 'Chill Producer', 'lofi, chill, study, beats, focus',
-                 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_2165f1a07c.mp3?filename=lofi-study-112191.mp3',
-                 'https://cdn.pixabay.com/download/audio/2022/08/02/audio_2165f1a07c.mp3?filename=lofi-study-112191.mp3',
+                 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3',
+                 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3',
                  165, 7200, 420, 'lofi', 'focus'),
                 
                 ('demo', 'demo_blue_1', 'Midnight Blues', 'Blues Soul', 'blues, guitar, emotional, midnight',
-                 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3',
-                 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3',
+                 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3',
+                 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3',
                  210, 3500, 180, 'blues', 'melancholic'),
                 
                 ('demo', 'demo_piano_1', 'Peaceful Piano', 'Piano Virtuoso', 'piano, classical, peaceful, meditation',
-                 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3',
-                 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3',
+                 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3',
+                 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3',
                  240, 6800, 340, 'classical', 'peaceful')
             ]
             
@@ -128,24 +128,24 @@ class SimpleMusicService:
             demo_tracks = []
             track_templates = {
                 'jazz': [
-                    ('Smooth Jazz Evening', 'Miles Davis Jr.', 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', 185),
-                    ('Coffee Shop Blues', 'Jazz Collective', 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', 220),
-                    ('Midnight Saxophone', 'Neo Jazz', 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav', 195)
+                    ('Smooth Jazz Evening', 'Miles Davis Jr.', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 185),
+                    ('Coffee Shop Blues', 'Jazz Collective', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 220),
+                    ('Midnight Saxophone', 'Neo Jazz', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 195)
                 ],
                 'lofi': [
-                    ('Study Session Vibes', 'LoFi Master', 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3', 165),
-                    ('Rainy Day Focus', 'Chill Beats', 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3', 180),
-                    ('Late Night Programming', 'Code Music', 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3', 200)
+                    ('Study Session Vibes', 'LoFi Master', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 165),
+                    ('Rainy Day Focus', 'Chill Beats', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 180),
+                    ('Late Night Programming', 'Code Music', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 200)
                 ],
                 'piano': [
-                    ('Peaceful Piano Meditation', 'Classical Piano', 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3', 240),
-                    ('Morning Piano Reflection', 'Piano Soloist', 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3', 190),
-                    ('Gentle Piano Dreams', 'Dream Piano', 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3', 210)
+                    ('Peaceful Piano Meditation', 'Classical Piano', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 240),
+                    ('Morning Piano Reflection', 'Piano Soloist', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 190),
+                    ('Gentle Piano Dreams', 'Dream Piano', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 210)
                 ],
                 'blues': [
-                    ('Electric Blues Riff', 'Blues Guitar Pro', 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3', 180),
-                    ('Soulful Blues Journey', 'Blues Master', 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3', 195),
-                    ('Delta Blues Story', 'Acoustic Blues', 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3', 220)
+                    ('Electric Blues Riff', 'Blues Guitar Pro', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 180),
+                    ('Soulful Blues Journey', 'Blues Master', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 195),
+                    ('Delta Blues Story', 'Acoustic Blues', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3', 220)
                 ]
             }
             
@@ -2134,27 +2134,27 @@ def download_music():
                 query_type = parts[1]  # lofi, jazz, etc.
                 track_index = int(parts[2])
                 
-                # Create demo track info
+                # Create demo track info with working audio URLs
                 demo_tracks = {
                     'lofi': [
-                        ('Study Session Vibes', 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3'),
-                        ('Rainy Day Focus', 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3'),
-                        ('Late Night Programming', 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3')
+                        ('Study Session Vibes', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3'),
+                        ('Rainy Day Focus', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3'),
+                        ('Late Night Programming', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3')
                     ],
                     'jazz': [
-                        ('Smooth Jazz Evening', 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav'),
-                        ('Coffee Shop Blues', 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav'),
-                        ('Midnight Saxophone', 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav')
+                        ('Smooth Jazz Evening', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3'),
+                        ('Coffee Shop Blues', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3'),
+                        ('Midnight Saxophone', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3')
                     ],
                     'piano': [
-                        ('Peaceful Piano Meditation', 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3'),
-                        ('Morning Piano Reflection', 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3'),
-                        ('Gentle Piano Dreams', 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3')
+                        ('Peaceful Piano Meditation', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3'),
+                        ('Morning Piano Reflection', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3'),
+                        ('Gentle Piano Dreams', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3')
                     ],
                     'blues': [
-                        ('Electric Blues Riff', 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3'),
-                        ('Soulful Blues Journey', 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3'),
-                        ('Delta Blues Story', 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3')
+                        ('Electric Blues Riff', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3'),
+                        ('Soulful Blues Journey', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3'),
+                        ('Delta Blues Story', 'https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3')
                     ]
                 }
                 
