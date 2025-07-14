@@ -377,7 +377,7 @@ def home():
         <div class="container">
             <h1>🚀 Heckx AI Assistant</h1>
             <p style="text-align: center; font-size: 1.2em; margin-bottom: 30px;">
-                🎵 <strong>Music Discovery Hub</strong> - Lo-fi, Jazz, Piano & Ambient Music + Smart Quotes
+                🎵 <strong>Music Discovery Hub</strong> - Lo-fi, Jazz, Piano & Ambient Music + Smart Quotes (v2.0)
             </p>
             
             <div class="features-grid">
