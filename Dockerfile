@@ -7,11 +7,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
-COPY app_railway.py .
-COPY railway.json .
+COPY app.py .
 
 # Expose port
 EXPOSE 8000
 
-# Start with Python directly (simpler than gunicorn for debugging)
-CMD ["python", "app_railway.py"]
+# Start with Python directly
+CMD ["python", "app.py"]
