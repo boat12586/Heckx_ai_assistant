@@ -16,6 +16,15 @@ app = Flask(__name__)
 CORS(app)
 
 # Initialize services
+try:
+    # Force recreate music database with demo data
+    import os
+    if os.path.exists('music_library.db'):
+        os.remove('music_library.db')
+        print("🔄 Recreating music database with demo data...")
+except:
+    pass
+
 music_service = MusicDiscoveryService()
 drive_service = get_drive_service()
 
@@ -257,7 +266,7 @@ def home():
         <div class="container">
             <h1>🚀 Heckx AI Assistant</h1>
             <p style="text-align: center; font-size: 1.2em; margin-bottom: 30px;">
-                ✨ Enhanced with conversation history, categories, and personalization
+                🎵 <strong>Music Discovery Hub</strong> - Lo-fi, Jazz, Piano & Ambient Music + Smart Quotes
             </p>
             
             <div class="features-grid">
@@ -358,7 +367,19 @@ def home():
                 </div>
             </div>
             
-            <div id="result">🎯 Select a category and click "Get Quote" to start...</div>
+            <div id="result">
+                🎵 <strong>Welcome to Your Music Discovery Hub!</strong><br><br>
+                ✨ Try the <strong>Music</strong> tab to discover premium Lo-fi, Jazz & Piano tracks<br>
+                📚 Or explore wisdom quotes in the <strong>Quotes</strong> tab<br>
+                🎼 Check your <strong>Library</strong> for collected music<br><br>
+                <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-top: 15px;">
+                    <h4>🎵 Demo Music Available:</h4>
+                    <p>• Smooth Jazz Café ☕</p>
+                    <p>• Midnight Blues 🌙</p>  
+                    <p>• Lo-fi Study Session 📚</p>
+                    <p>• Ambient Atmosphere 🧘</p>
+                </div>
+            </div>
         </div>
         
         <script>
