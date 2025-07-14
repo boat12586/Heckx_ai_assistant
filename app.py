@@ -1949,11 +1949,29 @@ def get_quote():
         conn.close()
         
         return jsonify({
-            'quote': quote_data['text'],
+            'success': True,
+            'text': quote_data['text'],
             'author': quote_data['author'],
             'category': category,
             'id': quote_id,
             'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/quote/daily')
+def get_daily_quote():
+    """Get daily motivational quote"""
+    try:
+        # Use wisdom category for daily quote
+        quote_data = random.choice(QUOTES_BY_CATEGORY['wisdom'])
+        
+        return jsonify({
+            'success': True,
+            'text': quote_data['text'],
+            'author': quote_data['author'],
+            'category': 'wisdom',
+            'date': datetime.now().strftime('%Y-%m-%d')
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -2107,6 +2125,55 @@ def download_music():
         
         if not track_id:
             return jsonify({'error': 'Track ID required'}), 400
+        
+        # Handle both database tracks (int ID) and API tracks (string ID)
+        if str(track_id).startswith('api_'):
+            # This is an API track, find it in recent search results or create demo URL
+            parts = str(track_id).split('_')
+            if len(parts) >= 3:
+                query_type = parts[1]  # lofi, jazz, etc.
+                track_index = int(parts[2])
+                
+                # Create demo track info
+                demo_tracks = {
+                    'lofi': [
+                        ('Study Session Vibes', 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3'),
+                        ('Rainy Day Focus', 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3'),
+                        ('Late Night Programming', 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=modern-chillout-12099.mp3')
+                    ],
+                    'jazz': [
+                        ('Smooth Jazz Evening', 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav'),
+                        ('Coffee Shop Blues', 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav'),
+                        ('Midnight Saxophone', 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav')
+                    ],
+                    'piano': [
+                        ('Peaceful Piano Meditation', 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3'),
+                        ('Morning Piano Reflection', 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3'),
+                        ('Gentle Piano Dreams', 'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1108ab8b9.mp3?filename=piano-moment-7800.mp3')
+                    ],
+                    'blues': [
+                        ('Electric Blues Riff', 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3'),
+                        ('Soulful Blues Journey', 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3'),
+                        ('Delta Blues Story', 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_478a8fc8ee.mp3?filename=relaxing-guitar-loop-7355.mp3')
+                    ]
+                }
+                
+                if query_type in demo_tracks and track_index < len(demo_tracks[query_type]):
+                    title, download_url = demo_tracks[query_type][track_index]
+                    return jsonify({
+                        'success': True,
+                        'download_url': download_url,
+                        'title': title,
+                        'message': f'Ready to download: {title}'
+                    })
+            
+            return jsonify({'error': 'API track not found'}), 404
+        
+        # Handle database tracks (original logic)
+        try:
+            track_id = int(track_id)
+        except ValueError:
+            return jsonify({'error': 'Invalid track ID'}), 400
         
         # Get track from database
         conn = sqlite3.connect('music_library.db')
