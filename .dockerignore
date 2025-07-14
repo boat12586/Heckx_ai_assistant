@@ -2,3 +2,7 @@
 *
 !app.py
 !requirements.txt
+!container_integration.py
+!stoic_quotes.py
+!video_footage.py
+!bgm_system.py

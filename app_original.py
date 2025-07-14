@@ -1,179 +1,19 @@
 #!/usr/bin/env python3
 """
-Heckx AI Assistant - Standalone version with all features
+Heckx AI Assistant with Container Integration
 """
 
 import os
 import json
-import random
-import requests
-from datetime import datetime
 from flask import Flask, jsonify, request
+from container_integration import ContainerIntegration
+from stoic_quotes import StoicQuotesGenerator
 
 app = Flask(__name__)
 
-# Embedded classes instead of separate modules
-class StoicQuotesGenerator:
-    def __init__(self):
-        self.thai_quotes = [
-            {
-                "quote": "ความสุขของชีวิตไม่ได้ขึ้นอยู่กับสิ่งที่เกิดขึ้นกับเรา แต่ขึ้นอยู่กับวิธีที่เราตอบสนองต่อสิ่งที่เกิดขึ้น",
-                "author": "Epictetus",
-                "theme": "resilience",
-                "color": "#2C3E50",
-                "background": "mountain"
-            },
-            {
-                "quote": "คุณมีอำนาจเหนือจิตใจของคุณ ไม่ใช่เหตุการณ์ภายนอก เมื่อคุณตระหนักถึงสิ่งนี้ คุณจะพบความแข็งแกร่ง",
-                "author": "Marcus Aurelius",
-                "theme": "control",
-                "color": "#8E44AD",
-                "background": "ocean"
-            },
-            {
-                "quote": "ไม่ใช่สิ่งที่เกิดขึ้นกับคุณ แต่เป็นวิธีที่คุณตอบสนองต่อสิ่งที่เกิดขึ้นที่สำคัญ",
-                "author": "Epictetus",
-                "theme": "response",
-                "color": "#E74C3C",
-                "background": "sunset"
-            },
-            {
-                "quote": "ความยากลำบากเปิดเผยตัวตนที่แท้จริงของเรา",
-                "author": "Seneca",
-                "theme": "growth",
-                "color": "#27AE60",
-                "background": "forest"
-            }
-        ]
-
-    def get_random_quote(self, language="thai", theme=None):
-        quotes = self.thai_quotes
-        if theme:
-            quotes = [q for q in quotes if q.get("theme") == theme]
-        if not quotes:
-            quotes = self.thai_quotes
-        return random.choice(quotes)
-    
-    def get_daily_quote(self):
-        today = datetime.now().strftime("%Y-%m-%d")
-        random.seed(today)
-        quote = self.get_random_quote()
-        random.seed()
-        return quote
-    
-    def export_for_api(self, quote_data):
-        return {
-            "id": f"quote_{random.randint(1000, 9999)}",
-            "quote": quote_data["quote"],
-            "author": quote_data["author"],
-            "theme": quote_data["theme"],
-            "style": {
-                "color": quote_data["color"],
-                "background": quote_data["background"]
-            },
-            "video_ready": True,
-            "timestamp": datetime.now().isoformat()
-        }
-
-class ContainerIntegration:
-    def __init__(self):
-        self.services = {
-            "kokoro_tts": {
-                "name": "Kokoro GPU TTS",
-                "url": "http://localhost:8880",
-                "features": ["japanese_tts", "gpu_acceleration"],
-                "status": "running"
-            },
-            "nca_toolkit": {
-                "name": "NCA Toolkit", 
-                "url": "http://localhost:8080",
-                "features": ["ai_tools", "automation"],
-                "status": "available"
-            },
-            "baserow": {
-                "name": "Baserow Database",
-                "url": "http://localhost:443",
-                "features": ["database", "api"],
-                "status": "available"
-            },
-            "minio": {
-                "name": "MinIO Storage",
-                "url": "http://localhost:9000", 
-                "features": ["object_storage", "s3_compatible"],
-                "status": "available"
-            },
-            "n8n": {
-                "name": "n8n Automation",
-                "url": "http://localhost:5678",
-                "features": ["workflow_automation"],
-                "status": "available"
-            }
-        }
-
-    def check_service_health(self, service_name):
-        try:
-            service = self.services.get(service_name)
-            if not service:
-                return {"status": "unknown", "error": "Service not found"}
-            
-            # Since we're in Railway, these containers aren't accessible
-            # Return mock status for demo
-            return {
-                "status": "demo_mode",
-                "url": service["url"],
-                "container": service_name
-            }
-        except:
-            return {"status": "demo_mode", "error": "Demo environment"}
-
-    def get_system_status(self):
-        status_report = {
-            "timestamp": datetime.now().isoformat(),
-            "services": {},
-            "overall_health": "demo_mode"
-        }
-        
-        for service_name, service_info in self.services.items():
-            status_report["services"][service_name] = {
-                "name": service_info["name"],
-                "health": "demo_mode",
-                "url": service_info["url"],
-                "features": service_info["features"]
-            }
-        
-        status_report["overall_health"] = "demo_mode"
-        return status_report
-
-    def create_motivational_video_pipeline(self, quote_data):
-        # Mock pipeline for demo
-        return {
-            "quote": quote_data,
-            "steps": [
-                {"step": "tts", "status": True},
-                {"step": "storage", "status": True},
-                {"step": "nca_processing", "status": True},
-                {"step": "database", "status": True},
-                {"step": "automation", "status": True}
-            ],
-            "outputs": {
-                "audio_url": "demo_audio.wav",
-                "video_config": {"demo": True}
-            },
-            "status": "completed"
-        }
-
-    def use_kokoro_tts(self, text, voice="thai_female", speed=1.0):
-        # Mock TTS response
-        return {
-            "success": True,
-            "message": f"TTS generated for: {text[:50]}...",
-            "format": "wav",
-            "service": "kokoro_tts_demo"
-        }
-
 # Initialize services
-quotes_generator = StoicQuotesGenerator()
 container_integration = ContainerIntegration()
+quotes_generator = StoicQuotesGenerator()
 
 @app.route('/')
 def home():
@@ -248,7 +88,7 @@ def home():
                 margin-right: 8px;
             }
             .status-online { background: #4CAF50; }
-            .status-demo { background: #FFC107; }
+            .status-offline { background: #F44336; }
             
             .chat-messages { 
                 height: 200px; 
@@ -271,11 +111,6 @@ def home():
             }
             
             .footer { text-align: center; margin-top: 40px; opacity: 0.8; }
-            
-            @media (max-width: 768px) {
-                .api-demo { grid-template-columns: 1fr; }
-                .header h1 { font-size: 2em; }
-            }
         </style>
     </head>
     <body>
@@ -283,35 +118,35 @@ def home():
             <div class="header">
                 <h1>🚀 Heckx AI</h1>
                 <div class="subtitle">Ultimate Motivational Video Creator Platform</div>
-                <div class="subtitle">🎬 Live on Railway • Ready for Production</div>
+                <div class="subtitle">พร้อม Kokoro TTS + NCA Toolkit + MinIO + Baserow + n8n</div>
             </div>
             
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">🎙️</div>
                     <div class="feature-title">Kokoro GPU TTS</div>
-                    <div><span id="kokoro-status" class="status-indicator status-demo"></span>High-Quality Voice Synthesis</div>
+                    <div><span id="kokoro-status" class="status-indicator status-offline"></span>High-Quality Voice Synthesis</div>
                     <button onclick="testKokoro()">Test TTS</button>
                 </div>
                 
                 <div class="feature-card">
                     <div class="feature-icon">🎬</div>
                     <div class="feature-title">NCA Toolkit</div>
-                    <div><span id="nca-status" class="status-indicator status-demo"></span>AI Video Generation</div>
+                    <div><span id="nca-status" class="status-indicator status-offline"></span>AI Video Generation</div>
                     <button onclick="testNCA()">Test NCA</button>
                 </div>
                 
                 <div class="feature-card">
                     <div class="feature-icon">💾</div>
                     <div class="feature-title">MinIO Storage</div>
-                    <div><span id="minio-status" class="status-indicator status-demo"></span>Media Storage</div>
+                    <div><span id="minio-status" class="status-indicator status-offline"></span>Media Storage</div>
                     <button onclick="testStorage()">Test Storage</button>
                 </div>
                 
                 <div class="feature-card">
                     <div class="feature-icon">📊</div>
                     <div class="feature-title">Baserow Database</div>
-                    <div><span id="baserow-status" class="status-indicator status-demo"></span>Data Management</div>
+                    <div><span id="baserow-status" class="status-indicator status-offline"></span>Data Management</div>
                     <button onclick="testDatabase()">Test DB</button>
                 </div>
             </div>
@@ -333,14 +168,14 @@ def home():
                         <h3>🎬 Video Generator</h3>
                         <button onclick="generateQuote()" style="width: 100%; margin-bottom: 10px;">🎯 Generate Daily Quote</button>
                         <button onclick="createVideo()" style="width: 100%; margin-bottom: 10px;">🚀 Create Motivational Video</button>
-                        <button onclick="checkContainers()" style="width: 100%;">📊 Check System Status</button>
+                        <button onclick="checkContainers()" style="width: 100%;">📊 Check All Containers</button>
                         <div id="video-status" style="margin-top: 15px; font-family: monospace; font-size: 0.9em;"></div>
                     </div>
                 </div>
             </div>
             
             <div class="footer">
-                <p>✅ DEPLOYED SUCCESSFULLY • 🚀 Railway Platform • Created with ❤️ by bobo</p>
+                <p>Powered by Docker Containers • Created with ❤️ by bobo • Ready for Production 🔥</p>
             </div>
         </div>
         
@@ -348,17 +183,28 @@ def home():
             // Check container status on load
             checkContainers();
             
+            function updateStatus(service, isOnline) {
+                const element = document.getElementById(service + '-status');
+                if (element) {
+                    element.className = 'status-indicator ' + (isOnline ? 'status-online' : 'status-offline');
+                }
+            }
+            
             function checkContainers() {
-                document.getElementById('video-status').innerHTML = '🔄 Checking system...';
+                document.getElementById('video-status').innerHTML = '🔄 Checking containers...';
                 
                 fetch('/api/containers/status')
                 .then(r => r.json())
                 .then(data => {
                     const services = data.services || {};
+                    updateStatus('kokoro', services.kokoro_tts?.health === 'healthy');
+                    updateStatus('nca', services.nca_toolkit?.health === 'healthy');
+                    updateStatus('minio', services.minio?.health === 'healthy');
+                    updateStatus('baserow', services.baserow?.health === 'healthy');
+                    
                     document.getElementById('video-status').innerHTML = 
                         `✅ System Health: ${data.overall_health}<br>` +
-                        `📊 Demo Mode: All features available<br>` +
-                        `🎬 Ready to create amazing videos!`;
+                        `📊 Services Online: ${Object.values(services).filter(s => s.health === 'healthy').length}/${Object.keys(services).length}`;
                 })
                 .catch(e => {
                     document.getElementById('video-status').innerHTML = '❌ Error checking containers';
@@ -390,8 +236,8 @@ def home():
                 .then(data => {
                     document.getElementById('video-status').innerHTML = 
                         `🎬 <strong>Status:</strong> ${data.success ? '✅ Success' : '❌ Failed'}<br>` +
-                        `📊 <strong>Pipeline:</strong> ${data.pipeline.steps.length} steps completed<br>` +
-                        `🎯 <strong>Ready:</strong> Video creation system operational!`;
+                        `📊 <strong>Pipeline:</strong> ${data.pipeline.steps.length} steps<br>` +
+                        `🎯 <strong>Message:</strong> ${data.message}`;
                 });
             }
             
@@ -399,17 +245,25 @@ def home():
                 fetch('/api/tts/synthesize', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({text: 'สวัสดีจาก Heckx AI', voice: 'thai_female'})
+                    body: JSON.stringify({text: 'สวัสดีจาก Kokoro TTS', voice: 'thai_female'})
                 })
                 .then(r => r.json())
                 .then(data => {
-                    alert(data.success ? '✅ Kokoro TTS Ready!' : '❌ TTS Failed');
+                    alert(data.success ? '✅ Kokoro TTS Working!' : '❌ Kokoro TTS Failed');
                 });
             }
             
-            function testNCA() { alert('🎬 NCA Toolkit integration ready!'); }
-            function testStorage() { alert('💾 MinIO storage integration ready!'); }
-            function testDatabase() { alert('📊 Baserow database integration ready!'); }
+            function testNCA() {
+                alert('🎬 NCA Toolkit integration ready!');
+            }
+            
+            function testStorage() {
+                alert('💾 MinIO storage integration ready!');
+            }
+            
+            function testDatabase() {
+                alert('📊 Baserow database integration ready!');
+            }
             
             function sendChat() {
                 const input = document.getElementById('chat-input');
@@ -439,63 +293,92 @@ def home():
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    from flask import request
+    
     data = request.json
     user_msg = data.get('message', '').lower()
     
+    # Simple responses
     if 'สวัสดี' in user_msg or 'hello' in user_msg:
-        response = 'สวัสดีครับ! ผมพร้อมสร้างวิดีโอแรงบันดาลใจให้คุณ'
-    elif 'วิดีโอ' in user_msg or 'video' in user_msg:
-        response = 'ผมสามารถสร้างวิดีโอแรงบันดาลใจด้วย AI voice + BGM + footage ได้เลย!'
-    elif 'คุณคือใคร' in user_msg:
-        response = 'ผมคือ Heckx AI Ultimate Video Creator ที่เจ๋งที่สุด!'
+        response = 'สวัสดีครับ! ยินดีที่ได้รู้จักคุณ'
+    elif 'คุณคือใคร' in user_msg or 'who are you' in user_msg:
+        response = 'ผมคือ Heckx AI ผู้ช่วยที่สร้างโดย bobo ครับ'
+    elif 'ขอบคุณ' in user_msg or 'thank' in user_msg:
+        response = 'ยินดีครับ! มีอะไรให้ช่วยอีกไหม?'
+    elif 'ลาก่อน' in user_msg or 'bye' in user_msg:
+        response = 'ลาก่อนครับ! แวะมาคุยกันใหม่นะ'
     else:
-        response = f'เข้าใจแล้ว: "{data.get("message")}" ลองกดปุ่ม Create Video ดูสิครับ!'
+        response = f'ได้รับข้อความ: "{data.get("message")}" ขอบคุณที่คุยกับผมครับ!'
     
     return jsonify({'response': response})
 
 @app.route('/health')
 def health():
-    return jsonify({'status': 'ok', 'app': 'Heckx AI Ultimate'})
+    return jsonify({'status': 'ok', 'app': 'Heckx AI'})
 
 @app.route('/api/containers/status')
 def containers_status():
+    """Check status of all containers"""
     status = container_integration.get_system_status()
     return jsonify(status)
 
 @app.route('/api/quote/generate', methods=['POST'])
 def generate_quote():
+    """Generate a motivational quote"""
     data = request.json or {}
     theme = data.get('theme', 'resilience')
-    quote = quotes_generator.get_random_quote(theme=theme)
+    language = data.get('language', 'thai')
+    
+    quote = quotes_generator.get_quote_by_theme(theme, language)
     return jsonify(quotes_generator.export_for_api(quote))
 
 @app.route('/api/video/create', methods=['POST'])
 def create_video():
+    """Create motivational video using all containers"""
     data = request.json or {}
-    theme = data.get('theme', 'resilience')
     
-    quote_data = quotes_generator.get_random_quote(theme=theme)
-    quote_data = quotes_generator.export_for_api(quote_data)
+    # Generate quote if not provided
+    if 'quote' not in data:
+        theme = data.get('theme', 'resilience')
+        quote_data = quotes_generator.get_quote_by_theme(theme)
+        quote_data = quotes_generator.export_for_api(quote_data)
+    else:
+        quote_data = data['quote']
     
+    # Create video using container pipeline
     result = container_integration.create_motivational_video_pipeline(quote_data)
     
     return jsonify({
         'success': result['status'] == 'completed',
         'pipeline': result,
-        'message': 'Video creation pipeline executed successfully!'
+        'video_id': result.get('outputs', {}).get('video_id'),
+        'message': 'Video creation pipeline executed'
     })
 
 @app.route('/api/tts/synthesize', methods=['POST'])
 def synthesize_speech():
+    """Use Kokoro TTS for speech synthesis"""
     data = request.json or {}
     text = data.get('text', 'สวัสดีครับ')
     voice = data.get('voice', 'thai_female')
     
     result = container_integration.use_kokoro_tts(text, voice)
-    return jsonify(result)
+    
+    if result['success']:
+        return jsonify({
+            'success': True,
+            'message': 'Speech synthesized successfully',
+            'audio_format': result['format']
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': result['error']
+        }), 500
 
 @app.route('/api/quote/daily')
 def daily_quote():
+    """Get today's motivational quote"""
     quote = quotes_generator.get_daily_quote()
     return jsonify(quotes_generator.export_for_api(quote))
 
