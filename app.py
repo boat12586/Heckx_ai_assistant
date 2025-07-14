@@ -1,14 +1,37 @@
 #!/usr/bin/env python3
 """
-Heckx AI - Minimal Working Version
+Heckx AI - Production Optimized Version
 """
 import os
 import json
 import random
+import time
+import psutil
 from datetime import datetime
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, g
+import logging
 
 app = Flask(__name__)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Performance monitoring
+@app.before_request
+def before_request():
+    g.start_time = time.time()
+
+@app.after_request
+def after_request(response):
+    if hasattr(g, 'start_time'):
+        diff = time.time() - g.start_time
+        if diff > 1:  # Log slow requests
+            logger.warning(f"Slow request: {request.endpoint} took {diff:.2f}s")
+    return response
 
 # Simple quote data
 QUOTES = [
@@ -144,12 +167,47 @@ def home():
 
 @app.route('/health')
 def health():
-    return jsonify({
-        'status': 'OK',
-        'app': 'Heckx AI Minimal',
-        'timestamp': datetime.now().isoformat(),
-        'version': '1.0'
-    })
+    # Advanced health check
+    try:
+        memory = psutil.virtual_memory()
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        
+        health_status = {
+            'status': 'OK',
+            'app': 'Heckx AI Production',
+            'timestamp': datetime.now().isoformat(),
+            'version': '2.0',
+            'system': {
+                'memory_percent': memory.percent,
+                'memory_available_gb': round(memory.available / (1024**3), 2),
+                'cpu_percent': cpu_percent,
+                'uptime_seconds': time.time()
+            },
+            'performance': {
+                'workers': int(os.environ.get('WEB_CONCURRENCY', 3)),
+                'environment': os.environ.get('RAILWAY_ENVIRONMENT', 'production')
+            }
+        }
+        
+        # Warning thresholds
+        if memory.percent > 85:
+            health_status['warnings'] = health_status.get('warnings', [])
+            health_status['warnings'].append('High memory usage')
+            
+        if cpu_percent > 90:
+            health_status['warnings'] = health_status.get('warnings', [])
+            health_status['warnings'].append('High CPU usage')
+            
+        return jsonify(health_status)
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return jsonify({
+            'status': 'ERROR',
+            'app': 'Heckx AI Production',
+            'timestamp': datetime.now().isoformat(),
+            'error': str(e)
+        }), 500
 
 @app.route('/api/quote')
 def get_quote():
@@ -170,6 +228,41 @@ def test_api():
         'timestamp': datetime.now().isoformat()
     })
 
+# Add performance endpoint
+@app.route('/api/performance')
+def performance_stats():
+    try:
+        memory = psutil.virtual_memory()
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        
+        return jsonify({
+            'performance': {
+                'memory_usage_percent': memory.percent,
+                'memory_available_gb': round(memory.available / (1024**3), 2),
+                'cpu_usage_percent': cpu_percent,
+                'workers': int(os.environ.get('WEB_CONCURRENCY', 3)),
+                'environment': os.environ.get('RAILWAY_ENVIRONMENT', 'production'),
+                'timestamp': datetime.now().isoformat()
+            },
+            'recommendations': {
+                'memory': 'Good' if memory.percent < 80 else 'Consider optimization',
+                'cpu': 'Good' if cpu_percent < 80 else 'High usage detected'
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Error handlers for production
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"Internal server error: {str(error)}")
+    return jsonify({'error': 'Internal server error'}), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
+    logger.info(f"Starting Heckx AI Production server on port {port}")
     app.run(host='0.0.0.0', port=port, debug=False)
