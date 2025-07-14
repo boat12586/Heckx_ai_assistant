@@ -905,14 +905,20 @@ def home():
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({track: track})
                 })
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) {
+                        throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+                    }
+                    return r.json();
+                })
                 .then(data => {
                     if (data.success) {
                         document.getElementById('result').innerHTML = `
                             <div style="border-left: 4px solid #4CAF50; padding-left: 20px;">
-                                <h3>✅ Download Successful</h3>
+                                <h3>✅ Download Ready</h3>
                                 <p><strong>Track:</strong> ${track.title}</p>
-                                <p><strong>File:</strong> ${data.file_path}</p>
+                                <p><strong>Message:</strong> ${data.message}</p>
+                                <p><a href="${data.download_url}" target="_blank" style="color: #4CAF50; text-decoration: underline;">🔗 Download Link</a></p>
                                 <p><strong>Google Drive:</strong> ${data.google_drive_id ? 'Uploaded ✅' : 'Upload failed ❌'}</p>
                             </div>
                         `;
@@ -1044,18 +1050,35 @@ def home():
             function syncToDrive() {
                 document.getElementById('result').innerHTML = '☁️ Syncing library to Google Drive...';
                 
-                fetch('/api/music/drive/sync', {method: 'POST'})
-                .then(r => r.json())
+                fetch('/api/music/drive/sync', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({})
+                })
+                .then(r => {
+                    if (!r.ok) {
+                        throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+                    }
+                    return r.json();
+                })
                 .then(data => {
                     if (data.success) {
                         document.getElementById('result').innerHTML = `
                             <div style="border-left: 4px solid #4CAF50; padding-left: 20px;">
                                 <h3>☁️ Google Drive Sync</h3>
-                                <p>${data.message}</p>
+                                <p><strong>Status:</strong> ${data.message}</p>
+                                <p><strong>Drive Enabled:</strong> ${data.drive_enabled ? 'Yes' : 'No'}</p>
+                                ${data.instructions ? `<p><strong>Setup:</strong> ${data.instructions}</p>` : ''}
                             </div>
                         `;
                     } else {
-                        document.getElementById('result').innerHTML = `❌ Sync failed: ${data.error}`;
+                        document.getElementById('result').innerHTML = `
+                            <div style="border-left: 4px solid #f44336; padding-left: 20px;">
+                                <h3>⚠️ Google Drive Setup Required</h3>
+                                <p>${data.message}</p>
+                                ${data.instructions ? `<p><strong>Instructions:</strong> ${data.instructions}</p>` : ''}
+                            </div>
+                        `;
                     }
                 })
                 .catch(e => {
