@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 """
-Heckx AI - Enhanced Railway Version with Features
+Heckx AI - Enhanced Railway Version with Music Discovery
 """
 import os
 import json
 import random
 import sqlite3
 from datetime import datetime
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
+from music_discovery import MusicDiscoveryService
+from google_drive_service import get_drive_service
 
 app = Flask(__name__)
 CORS(app)
+
+# Initialize services
+music_service = MusicDiscoveryService()
+drive_service = get_drive_service()
 
 # Enhanced quotes by category
 QUOTES_BY_CATEGORY = {
@@ -186,6 +192,60 @@ def home():
                 padding: 15px; 
                 margin-top: 20px;
             }
+            .tab-button {
+                background: rgba(255,255,255,0.1);
+                margin: 0 5px;
+                min-width: 120px;
+                border: 1px solid rgba(255,255,255,0.3);
+                transition: all 0.3s ease;
+            }
+            .tab-button.active {
+                background: linear-gradient(45deg, #4CAF50, #45a049);
+                transform: translateY(-2px);
+            }
+            .tab-content {
+                animation: fadeIn 0.5s ease;
+            }
+            .track-item {
+                background: rgba(255,255,255,0.1);
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 10px;
+                border-left: 4px solid #4CAF50;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            .track-item:hover {
+                background: rgba(255,255,255,0.2);
+                transform: translateX(5px);
+            }
+            .track-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 15px;
+                margin-top: 20px;
+            }
+            .music-controls {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                justify-content: center;
+                margin: 10px 0;
+            }
+            .progress-bar {
+                width: 100%;
+                height: 6px;
+                background: rgba(255,255,255,0.3);
+                border-radius: 3px;
+                overflow: hidden;
+                margin: 10px 0;
+            }
+            .progress-fill {
+                height: 100%;
+                background: linear-gradient(45deg, #4CAF50, #45a049);
+                width: 0%;
+                transition: width 0.3s ease;
+            }
             @media (max-width: 768px) {
                 .container { padding: 20px; }
                 h1 { font-size: 2.5em; }
@@ -206,32 +266,96 @@ def home():
                     <p>Categorized wisdom quotes with intelligent recommendations</p>
                 </div>
                 <div class="feature-card">
+                    <h3>🎵 Music Discovery</h3>
+                    <p>Premium Lo-fi, Jazz, Piano music from Pixabay with 2000+ downloads</p>
+                </div>
+                <div class="feature-card">
+                    <h3>☁️ Google Drive Backup</h3>
+                    <p>Auto-sync your music library and content to Google Drive</p>
+                </div>
+                <div class="feature-card">
                     <h3>💬 Conversation History</h3>
                     <p>Track your interactions and build personalized experiences</p>
                 </div>
                 <div class="feature-card">
-                    <h3>⚡ Performance Monitoring</h3>
-                    <p>Real-time health checks and usage analytics</p>
+                    <h3>🎼 Music Library</h3>
+                    <p>Organize, search, and stream your premium music collection</p>
                 </div>
                 <div class="feature-card">
-                    <h3>🎨 Personalization</h3>
-                    <p>Customize your experience with preferences and themes</p>
+                    <h3>📊 Analytics & Insights</h3>
+                    <p>Track usage, favorites, and optimize your experience</p>
                 </div>
             </div>
             
-            <div class="controls">
-                <select id="category">
-                    <option value="random">Random Category</option>
-                    <option value="wisdom">Wisdom</option>
-                    <option value="resilience">Resilience</option>
-                    <option value="mindfulness">Mindfulness</option>
-                    <option value="motivation">Motivation</option>
-                </select>
-                <button onclick="getQuote()">📝 Get Quote</button>
-                <button onclick="checkHealth()">❤️ Health Check</button>
-                <button onclick="getStats()">📊 Statistics</button>
-                <button onclick="getHistory()">📜 History</button>
-                <button onclick="clearHistory()">🗑️ Clear History</button>
+            <!-- Tab Navigation -->
+            <div style="display: flex; justify-content: center; margin: 30px 0;">
+                <button onclick="showTab('quotes')" id="quotesTab" class="tab-button active">📝 Quotes</button>
+                <button onclick="showTab('music')" id="musicTab" class="tab-button">🎵 Music</button>
+                <button onclick="showTab('library')" id="libraryTab" class="tab-button">🎼 Library</button>
+                <button onclick="showTab('stats')" id="statsTab" class="tab-button">📊 Stats</button>
+            </div>
+            
+            <!-- Quotes Tab -->
+            <div id="quotesSection" class="tab-content">
+                <div class="controls">
+                    <select id="category">
+                        <option value="random">Random Category</option>
+                        <option value="wisdom">Wisdom</option>
+                        <option value="resilience">Resilience</option>
+                        <option value="mindfulness">Mindfulness</option>
+                        <option value="motivation">Motivation</option>
+                    </select>
+                    <button onclick="getQuote()">📝 Get Quote</button>
+                    <button onclick="checkHealth()">❤️ Health Check</button>
+                    <button onclick="getStats()">📊 Statistics</button>
+                    <button onclick="getHistory()">📜 History</button>
+                    <button onclick="clearHistory()">🗑️ Clear History</button>
+                </div>
+            </div>
+            
+            <!-- Music Discovery Tab -->
+            <div id="musicSection" class="tab-content" style="display: none;">
+                <div class="controls">
+                    <input type="text" id="musicQuery" placeholder="Search: jazz, blue, piano, lofi..." style="padding: 10px; border-radius: 10px; border: none; margin: 5px; min-width: 200px;">
+                    <button onclick="discoverMusic()">🔍 Discover Music</button>
+                    <button onclick="bulkDiscover()">⚡ Bulk Discover</button>
+                    <button onclick="syncToDrive()">☁️ Sync to Drive</button>
+                </div>
+                <div class="controls">
+                    <button onclick="getRecommendations()">⭐ Recommendations</button>
+                    <button onclick="getDriveInfo()">📊 Drive Info</button>
+                    <button onclick="createPlaylist()">📝 Create Playlist</button>
+                </div>
+            </div>
+            
+            <!-- Music Library Tab -->
+            <div id="librarySection" class="tab-content" style="display: none;">
+                <div class="controls">
+                    <select id="genreFilter">
+                        <option value="">All Genres</option>
+                    </select>
+                    <select id="moodFilter">
+                        <option value="">All Moods</option>
+                    </select>
+                    <input type="text" id="libraryQuery" placeholder="Search library..." style="padding: 10px; border-radius: 10px; border: none; margin: 5px;">
+                    <button onclick="searchLibrary()">🔍 Search Library</button>
+                    <button onclick="loadPlaylists()">📋 Playlists</button>
+                </div>
+                <div id="musicPlayer" style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px; margin: 20px 0; text-align: center;">
+                    <audio id="audioPlayer" controls style="width: 100%; max-width: 500px; margin: 10px 0;">
+                        Your browser does not support the audio element.
+                    </audio>
+                    <div id="nowPlaying" style="margin-top: 10px; font-style: italic;">No track selected</div>
+                </div>
+            </div>
+            
+            <!-- Statistics Tab -->
+            <div id="statsSection" class="tab-content" style="display: none;">
+                <div class="controls">
+                    <button onclick="getDetailedStats()">📊 Detailed Stats</button>
+                    <button onclick="getLibraryStats()">🎵 Music Stats</button>
+                    <button onclick="exportData()">💾 Export Data</button>
+                </div>
             </div>
             
             <div id="result">🎯 Select a category and click "Get Quote" to start...</div>
@@ -399,6 +523,308 @@ def home():
                     }
                 })
                 .catch(e => console.error('Rating error:', e));
+            }
+            
+            // Tab Management
+            function showTab(tabName) {
+                // Hide all tabs
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.style.display = 'none';
+                });
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                // Show selected tab
+                document.getElementById(tabName + 'Section').style.display = 'block';
+                document.getElementById(tabName + 'Tab').classList.add('active');
+                
+                // Load content based on tab
+                if (tabName === 'library') {
+                    loadGenresAndMoods();
+                }
+            }
+            
+            // Music Discovery Functions
+            function discoverMusic() {
+                const query = document.getElementById('musicQuery').value || 'jazz';
+                document.getElementById('result').innerHTML = '🎵 Discovering premium music...';
+                
+                fetch(`/api/music/discover?query=${query}&min_downloads=2000`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        displayMusicTracks(data.tracks, 'Discovered Music');
+                    } else {
+                        document.getElementById('result').innerHTML = `❌ Error: ${data.error}`;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `❌ Discovery failed: ${e.message}`;
+                });
+            }
+            
+            function bulkDiscover() {
+                document.getElementById('result').innerHTML = '⚡ Bulk discovering premium tracks...';
+                
+                fetch('/api/music/bulk-discover', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        keywords: ['jazz', 'blue', 'piano', 'lofi', 'ambient', 'chill'],
+                        max_tracks: 15,
+                        auto_download: true
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        let html = `<div style="border-left: 4px solid #FF9800; padding-left: 20px;">`;
+                        html += `<h3>⚡ Bulk Discovery Results</h3>`;
+                        html += `<p><strong>Discovered:</strong> ${data.total_discovered} tracks</p>`;
+                        html += `<p><strong>Downloaded:</strong> ${data.total_downloaded} tracks</p>`;
+                        html += `<p><strong>Uploaded to Drive:</strong> ${data.downloaded_tracks.length} tracks</p>`;
+                        
+                        if (data.downloaded_tracks.length > 0) {
+                            html += `<h4>Downloaded Tracks:</h4>`;
+                            data.downloaded_tracks.forEach(track => {
+                                html += `<div class="track-item">📥 ${track.title} by ${track.artist}</div>`;
+                            });
+                        }
+                        html += `</div>`;
+                        
+                        document.getElementById('result').innerHTML = html;
+                    } else {
+                        document.getElementById('result').innerHTML = `❌ Error: ${data.error}`;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `❌ Bulk discovery failed: ${e.message}`;
+                });
+            }
+            
+            function displayMusicTracks(tracks, title) {
+                let html = `<div style="border-left: 4px solid #9C27B0; padding-left: 20px;">`;
+                html += `<h3>🎵 ${title}</h3>`;
+                html += `<div class="track-grid">`;
+                
+                tracks.forEach(track => {
+                    html += `
+                        <div class="track-item" onclick="downloadTrack(${JSON.stringify(track).replace(/"/g, '&quot;')})">
+                            <h4>🎼 ${track.title}</h4>
+                            <p><strong>Artist:</strong> ${track.artist}</p>
+                            <p><strong>Downloads:</strong> ${track.downloads?.toLocaleString() || 'N/A'}</p>
+                            <p><strong>Likes:</strong> ${track.likes?.toLocaleString() || 'N/A'}</p>
+                            <p><strong>Quality Score:</strong> ${track.quality_score || 'N/A'}</p>
+                            <div class="music-controls">
+                                <button onclick="event.stopPropagation(); downloadTrack(${JSON.stringify(track).replace(/"/g, '&quot;')})" style="background: #4CAF50; margin: 5px;">📥 Download</button>
+                                ${track.preview_url ? `<button onclick="event.stopPropagation(); previewTrack('${track.preview_url}')" style="background: #2196F3; margin: 5px;">▶️ Preview</button>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `</div></div>`;
+                document.getElementById('result').innerHTML = html;
+            }
+            
+            function downloadTrack(track) {
+                document.getElementById('result').innerHTML = `🔄 Downloading: ${track.title}...`;
+                
+                fetch('/api/music/download', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({track: track})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('result').innerHTML = `
+                            <div style="border-left: 4px solid #4CAF50; padding-left: 20px;">
+                                <h3>✅ Download Successful</h3>
+                                <p><strong>Track:</strong> ${track.title}</p>
+                                <p><strong>File:</strong> ${data.file_path}</p>
+                                <p><strong>Google Drive:</strong> ${data.google_drive_id ? 'Uploaded ✅' : 'Upload failed ❌'}</p>
+                            </div>
+                        `;
+                    } else {
+                        document.getElementById('result').innerHTML = `❌ Download failed: ${data.error}`;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `❌ Download error: ${e.message}`;
+                });
+            }
+            
+            function previewTrack(url) {
+                const player = document.getElementById('audioPlayer');
+                player.src = url;
+                player.play();
+                document.getElementById('nowPlaying').innerHTML = `🎵 Preview playing...`;
+            }
+            
+            function getRecommendations() {
+                document.getElementById('result').innerHTML = '⭐ Loading premium recommendations...';
+                
+                fetch('/api/music/recommendations')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        displayLibraryTracks(data.recommendations, 'Premium Recommendations');
+                    } else {
+                        document.getElementById('result').innerHTML = `❌ Error: ${data.error}`;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `❌ Failed to load recommendations: ${e.message}`;
+                });
+            }
+            
+            function searchLibrary() {
+                const query = document.getElementById('libraryQuery').value;
+                const genre = document.getElementById('genreFilter').value;
+                const mood = document.getElementById('moodFilter').value;
+                
+                let url = '/api/music/library?';
+                if (query) url += `query=${query}&`;
+                if (genre) url += `genre=${genre}&`;
+                if (mood) url += `mood=${mood}`;
+                
+                document.getElementById('result').innerHTML = '🔍 Searching library...';
+                
+                fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        displayLibraryTracks(data.tracks, 'Library Search Results');
+                        displayLibraryStats(data.stats);
+                    } else {
+                        document.getElementById('result').innerHTML = `❌ Error: ${data.error}`;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `❌ Search failed: ${e.message}`;
+                });
+            }
+            
+            function displayLibraryTracks(tracks, title) {
+                let html = `<div style="border-left: 4px solid #2196F3; padding-left: 20px;">`;
+                html += `<h3>🎼 ${title}</h3>`;
+                
+                if (tracks.length === 0) {
+                    html += `<p>No tracks found. Try discovering some music first!</p>`;
+                } else {
+                    html += `<div class="track-grid">`;
+                    tracks.forEach(track => {
+                        html += `
+                            <div class="track-item" onclick="playTrack(${track.id}, '${track.title}', '${track.artist}')">
+                                <h4>🎼 ${track.title}</h4>
+                                <p><strong>Artist:</strong> ${track.artist}</p>
+                                <p><strong>Genre:</strong> ${track.genre || 'Unknown'}</p>
+                                <p><strong>Mood:</strong> ${track.mood || 'Unknown'}</p>
+                                <p><strong>Downloads:</strong> ${track.downloads?.toLocaleString() || 'N/A'}</p>
+                                <div class="music-controls">
+                                    <button onclick="event.stopPropagation(); playTrack(${track.id}, '${track.title}', '${track.artist}')" style="background: #4CAF50; margin: 5px;">▶️ Play</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += `</div>`;
+                }
+                
+                html += `</div>`;
+                document.getElementById('result').innerHTML = html;
+            }
+            
+            function playTrack(trackId, title, artist) {
+                const player = document.getElementById('audioPlayer');
+                player.src = `/api/music/play/${trackId}`;
+                player.play();
+                document.getElementById('nowPlaying').innerHTML = `🎵 Now Playing: ${title} by ${artist}`;
+            }
+            
+            function loadGenresAndMoods() {
+                fetch('/api/music/genres')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const genreSelect = document.getElementById('genreFilter');
+                        const moodSelect = document.getElementById('moodFilter');
+                        
+                        // Clear existing options (except first)
+                        genreSelect.innerHTML = '<option value="">All Genres</option>';
+                        moodSelect.innerHTML = '<option value="">All Moods</option>';
+                        
+                        data.genres.forEach(item => {
+                            genreSelect.innerHTML += `<option value="${item.genre}">${item.genre} (${item.count})</option>`;
+                        });
+                        
+                        data.moods.forEach(item => {
+                            moodSelect.innerHTML += `<option value="${item.mood}">${item.mood} (${item.count})</option>`;
+                        });
+                    }
+                })
+                .catch(e => console.error('Failed to load genres/moods:', e));
+            }
+            
+            function displayLibraryStats(stats) {
+                // Display stats in a corner or overlay
+                console.log('Library Stats:', stats);
+            }
+            
+            function syncToDrive() {
+                document.getElementById('result').innerHTML = '☁️ Syncing library to Google Drive...';
+                
+                fetch('/api/music/drive/sync', {method: 'POST'})
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('result').innerHTML = `
+                            <div style="border-left: 4px solid #4CAF50; padding-left: 20px;">
+                                <h3>☁️ Google Drive Sync</h3>
+                                <p>${data.message}</p>
+                            </div>
+                        `;
+                    } else {
+                        document.getElementById('result').innerHTML = `❌ Sync failed: ${data.error}`;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `❌ Sync error: ${e.message}`;
+                });
+            }
+            
+            function getDriveInfo() {
+                document.getElementById('result').innerHTML = '📊 Loading Google Drive info...';
+                
+                fetch('/api/music/drive/info')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const info = data.drive_info;
+                        let html = `<div style="border-left: 4px solid #FF9800; padding-left: 20px;">`;
+                        html += `<h3>☁️ Google Drive Library</h3>`;
+                        html += `<p><strong>Total Files:</strong> ${info.total_files || 0}</p>`;
+                        html += `<p><strong>Total Size:</strong> ${info.total_size_mb || 0} MB</p>`;
+                        
+                        if (info.mock_mode) {
+                            html += `<p><strong>Status:</strong> Mock Mode - ${info.message}</p>`;
+                        } else if (info.files && info.files.length > 0) {
+                            html += `<h4>Recent Files:</h4>`;
+                            info.files.forEach(file => {
+                                html += `<p>📁 ${file.name} (${file.size_mb} MB)</p>`;
+                            });
+                        }
+                        
+                        html += `</div>`;
+                        document.getElementById('result').innerHTML = html;
+                    } else {
+                        document.getElementById('result').innerHTML = `❌ Error: ${data.error}`;
+                    }
+                })
+                .catch(e => {
+                    document.getElementById('result').innerHTML = `❌ Drive info failed: ${e.message}`;
+                });
             }
             
             // Auto-refresh health check every 60 seconds
@@ -595,6 +1021,251 @@ def rate_quote():
         conn.close()
         
         return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Music Discovery & Management API Endpoints
+
+@app.route('/api/music/discover')
+def discover_music():
+    """Discover premium quality music"""
+    try:
+        query = request.args.get('query', '')
+        min_downloads = int(request.args.get('min_downloads', 2000))
+        
+        if query:
+            tracks = music_service.search_pixabay_music(query, min_downloads)
+        else:
+            tracks = music_service.discover_premium_music()
+        
+        return jsonify({
+            'success': True,
+            'tracks': tracks[:20],  # Limit to 20 tracks
+            'total_found': len(tracks)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/music/download', methods=['POST'])
+def download_music():
+    """Download a music track"""
+    try:
+        data = request.get_json() or {}
+        track_info = data.get('track')
+        
+        if not track_info:
+            return jsonify({'error': 'Track information required'}), 400
+        
+        file_path = music_service.download_track(track_info)
+        
+        if file_path:
+            # Upload to Google Drive
+            drive_id = drive_service.upload_music_file(file_path, track_info)
+            
+            return jsonify({
+                'success': True,
+                'file_path': file_path,
+                'google_drive_id': drive_id,
+                'message': 'Track downloaded and uploaded to Google Drive'
+            })
+        else:
+            return jsonify({'error': 'Download failed'}), 500
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/music/library')
+def get_music_library():
+    """Get music library with search and filters"""
+    try:
+        query = request.args.get('query', '')
+        genre = request.args.get('genre')
+        mood = request.args.get('mood')
+        
+        if query or genre or mood:
+            tracks = music_service.search_library(query, genre, mood)
+        else:
+            # Get all tracks
+            tracks = music_service.search_library('', None, None)
+        
+        stats = music_service.get_library_stats()
+        
+        return jsonify({
+            'success': True,
+            'tracks': tracks,
+            'stats': stats,
+            'total_tracks': len(tracks)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/music/recommendations')
+def get_music_recommendations():
+    """Get premium music recommendations"""
+    try:
+        recommendations = music_service.get_premium_recommendations()
+        
+        return jsonify({
+            'success': True,
+            'recommendations': recommendations,
+            'total': len(recommendations)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/music/genres')
+def get_music_genres():
+    """Get available music genres"""
+    try:
+        conn = sqlite3.connect('music_library.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT DISTINCT genre, COUNT(*) FROM music_tracks GROUP BY genre')
+        genres = [{'genre': row[0], 'count': row[1]} for row in cursor.fetchall()]
+        
+        cursor.execute('SELECT DISTINCT mood, COUNT(*) FROM music_tracks GROUP BY mood')
+        moods = [{'mood': row[0], 'count': row[1]} for row in cursor.fetchall()]
+        
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'genres': genres,
+            'moods': moods
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/music/play/<int:track_id>')
+def stream_music(track_id):
+    """Stream music file"""
+    try:
+        conn = sqlite3.connect('music_library.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT file_path FROM music_tracks WHERE id = ?', (track_id,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result and result[0] and os.path.exists(result[0]):
+            return send_file(result[0], as_attachment=False)
+        else:
+            return jsonify({'error': 'Track file not found'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/music/playlists', methods=['GET', 'POST'])
+def manage_playlists():
+    """Get or create playlists"""
+    try:
+        if request.method == 'POST':
+            data = request.get_json() or {}
+            name = data.get('name')
+            track_ids = data.get('track_ids', [])
+            mood_tag = data.get('mood_tag')
+            
+            if not name:
+                return jsonify({'error': 'Playlist name required'}), 400
+            
+            playlist_id = music_service.create_playlist(name, track_ids, mood_tag)
+            
+            return jsonify({
+                'success': True,
+                'playlist_id': playlist_id,
+                'message': f'Playlist "{name}" created'
+            })
+        
+        else:  # GET
+            conn = sqlite3.connect('music_library.db')
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT * FROM playlists ORDER BY created_date DESC')
+            playlists = []
+            
+            for row in cursor.fetchall():
+                track_ids = [int(x) for x in row[3].split(',') if x]
+                playlists.append({
+                    'id': row[0],
+                    'name': row[1],
+                    'description': row[2],
+                    'track_count': len(track_ids),
+                    'mood_tag': row[6],
+                    'created_date': row[4]
+                })
+            
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'playlists': playlists
+            })
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/music/drive/info')
+def get_drive_info():
+    """Get Google Drive library information"""
+    try:
+        info = drive_service.get_drive_library_info()
+        return jsonify({
+            'success': True,
+            'drive_info': info
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/music/drive/sync', methods=['POST'])
+def sync_to_drive():
+    """Sync entire library to Google Drive"""
+    try:
+        drive_service.bulk_upload_library()
+        return jsonify({
+            'success': True,
+            'message': 'Library sync to Google Drive initiated'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/music/bulk-discover', methods=['POST'])
+def bulk_discover_music():
+    """Discover and download multiple premium tracks"""
+    try:
+        data = request.get_json() or {}
+        keywords = data.get('keywords', ['jazz', 'blue', 'piano', 'lofi'])
+        max_tracks = data.get('max_tracks', 10)
+        auto_download = data.get('auto_download', False)
+        
+        all_tracks = []
+        
+        for keyword in keywords:
+            tracks = music_service.search_pixabay_music(keyword, min_downloads=2000, per_page=5)
+            all_tracks.extend(tracks)
+        
+        # Sort by quality and limit
+        sorted_tracks = sorted(all_tracks, key=lambda x: x['quality_score'], reverse=True)
+        top_tracks = sorted_tracks[:max_tracks]
+        
+        downloaded_tracks = []
+        
+        if auto_download:
+            for track in top_tracks:
+                file_path = music_service.download_track(track)
+                if file_path:
+                    drive_id = drive_service.upload_music_file(file_path, track)
+                    track['file_path'] = file_path
+                    track['google_drive_id'] = drive_id
+                    downloaded_tracks.append(track)
+        
+        return jsonify({
+            'success': True,
+            'discovered_tracks': top_tracks,
+            'downloaded_tracks': downloaded_tracks,
+            'total_discovered': len(top_tracks),
+            'total_downloaded': len(downloaded_tracks)
+        })
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
